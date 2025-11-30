@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, Alert, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, Alert, ScrollView, Switch } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { registrarUsuario } from '../database/Database';
 
@@ -9,21 +9,50 @@ export default function PantallaRegistro({ navigation }) {
     email: '',
     universidad: '',
     password: '',
+    confirmPassword: '',
     tipoUsuario: 'ambos'
   });
 
+  const [aceptaTerminos, setAceptaTerminos] = useState(false);
+
   const handleRegistro = () => {
-    const { nombre, email, universidad, password } = formData;
-    
-    if (!nombre || !email || !universidad || !password) {
+    const { nombre, email, universidad, password, confirmPassword } = formData;
+
+    if (!nombre || !email || !universidad || !password || !confirmPassword) {
       Alert.alert('Error', 'Por favor completa todos los campos');
       return;
     }
 
+    if (!email.includes('@')) {
+      Alert.alert('Error', 'El correo electrónico no es válido');
+      return;
+    }
+
+    // Validación de contraseña: mínimo 6 caracteres, al menos una mayúscula y un número
+    const passwordRegex = /^(?=.*[A-Z])(?=.*\d).{6,}$/;
+    if (!passwordRegex.test(password)) {
+      Alert.alert(
+        'Error',
+        'La contraseña debe tener mínimo 6 caracteres, al menos una mayúscula y un número'
+      );
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert('Error', 'Las contraseñas no coinciden');
+      return;
+    }
+
+    if (!aceptaTerminos) {
+      Alert.alert('Error', 'Debes aceptar los términos y condiciones');
+      return;
+    }
+
+    // Registro en base de datos
     registrarUsuario(formData, (result) => {
       if (result.insertId) {
-        Alert.alert('Éxito', 'Cuenta creada correctamente');
-        navigation.navigate('Login');
+        Alert.alert('Cuenta creada con éxito');
+        navigation.navigate('PantallaInicio');
       } else {
         Alert.alert('Error', 'No se pudo crear la cuenta');
       }
@@ -57,7 +86,7 @@ export default function PantallaRegistro({ navigation }) {
             <Text style={styles.label}>Nombre completo</Text>
             <TextInput
               style={styles.input}
-              placeholder="Yuliana Valdez"
+              placeholder="Nombre"
               value={formData.nombre}
               onChangeText={(text) => updateFormData('nombre', text)}
             />
@@ -97,6 +126,17 @@ export default function PantallaRegistro({ navigation }) {
           </View>
 
           <View style={styles.inputGroup}>
+            <Text style={styles.label}>Confirmar contraseña</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="••••••••"
+              value={formData.confirmPassword}
+              onChangeText={(text) => updateFormData('confirmPassword', text)}
+              secureTextEntry
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
             <Text style={styles.label}>Tipo de usuario</Text>
             <View style={styles.radioGroup}>
               {[
@@ -120,6 +160,17 @@ export default function PantallaRegistro({ navigation }) {
                   <Text style={styles.radioLabel}>{option.label}</Text>
                 </TouchableOpacity>
               ))}
+            </View>
+          </View>
+
+          {/* Switch de términos y condiciones */}
+          <View style={styles.inputGroup}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <Switch
+                value={aceptaTerminos}
+                onValueChange={setAceptaTerminos}
+              />
+              <Text style={styles.label}>Acepto los términos y condiciones</Text>
             </View>
           </View>
 
