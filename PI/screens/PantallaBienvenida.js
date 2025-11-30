@@ -11,13 +11,10 @@ export default function PantallaBienvenida({ navigation }) {
             <Ionicons name="school" size={48} color="#8B5CF6" />
           </View>
         </View>
-        
-        <Text style={styles.title}>Lumina</Text>
-        
+        <Text style={styles.title}>Lumina</Text> 
         <Text style={styles.subtitle}>
           Conecta con tutores y estudiantes de tu universidad
         </Text>
-
         <View style={styles.buttonContainer}>
           <TouchableOpacity 
             style={styles.primaryButton}
@@ -25,7 +22,6 @@ export default function PantallaBienvenida({ navigation }) {
           >
             <Text style={styles.primaryButtonText}>Crear cuenta</Text>
           </TouchableOpacity>
-          
           <TouchableOpacity 
             style={styles.secondaryButton}
             onPress={() => navigation.navigate('Login')}
@@ -34,14 +30,12 @@ export default function PantallaBienvenida({ navigation }) {
           </TouchableOpacity>
         </View>
       </View>
-
       <View style={styles.footer}>
         <Text style={styles.footerText}>© 2025 Lumina - Proyecto Universitario</Text>
       </View>
     </SafeAreaView>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
