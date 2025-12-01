@@ -1,11 +1,17 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, Alert, ScrollView, Switch } from 'react-native';
+import {
+  View, Text, TextInput, TouchableOpacity,
+  StyleSheet, SafeAreaView, Alert, ScrollView,
+  Switch, ActivityIndicator
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { registrarUsuario } from '../database/Database';
+import { registrarUsuario, buscarUsuarioPorEmail } from '../database/Database';
 
 export default function PantallaRegistro({ navigation }) {
+
   const [formData, setFormData] = useState({
     nombre: '',
+    fechaNacimiento: '',
     email: '',
     universidad: '',
     password: '',
@@ -14,66 +20,113 @@ export default function PantallaRegistro({ navigation }) {
   });
 
   const [aceptaTerminos, setAceptaTerminos] = useState(false);
-
-  const handleRegistro = () => {
-    const { nombre, email, universidad, password, confirmPassword } = formData;
-
-    if (!nombre || !email || !universidad || !password || !confirmPassword) {
-      Alert.alert('Error', 'Por favor completa todos los campos');
-      return;
-    }
-
-    if (!email.includes('@')) {
-      Alert.alert('Error', 'El correo electrónico no es válido');
-      return;
-    }
-
-    // Validación de contraseña: mínimo 6 caracteres, al menos una mayúscula y un número
-    const passwordRegex = /^(?=.*[A-Z])(?=.*\d).{6,}$/;
-    if (!passwordRegex.test(password)) {
-      Alert.alert(
-        'Error',
-        'La contraseña debe tener mínimo 6 caracteres, al menos una mayúscula y un número'
-      );
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      Alert.alert('Error', 'Las contraseñas no coinciden');
-      return;
-    }
-
-    if (!aceptaTerminos) {
-      Alert.alert('Error', 'Debes aceptar los términos y condiciones');
-      return;
-    }
-
-    // Registro en base de datos
-    registrarUsuario(formData, (result) => {
-      if (result.insertId) {
-        Alert.alert('Cuenta creada con éxito');
-        navigation.navigate('PantallaInicio');
-      } else {
-        Alert.alert('Error', 'No se pudo crear la cuenta');
-      }
-    });
-  };
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [errors, setErrors] = useState({});
 
   const updateFormData = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    setFormData(prev => ({ ...prev, [field]: value }));
+    setErrors(prev => ({ ...prev, [field]: null }));
+  };
+
+  /* -----------------------------
+     FORMATEAR FECHA AUTOMÁTICAMENTE
+  ------------------------------ */
+  const formatFecha = (text) => {
+    let cleaned = text.replace(/\D/g, "");
+    if (cleaned.length >= 3 && cleaned.length <= 4) {
+      cleaned = cleaned.replace(/(\d{2})(\d{1,2})/, "$1/$2");
+    } else if (cleaned.length >= 5) {
+      cleaned = cleaned.replace(/(\d{2})(\d{2})(\d{1,4})/, "$1/$2/$3");
+    }
+    updateFormData("fechaNacimiento", cleaned);
+  };
+
+  /* -----------------------------
+     VALIDAR FORMULARIO
+  ------------------------------ */
+  const validarFormulario = () => {
+    let nuevosErrores = {};
+    const { nombre, fechaNacimiento, email, universidad, password, confirmPassword } = formData;
+
+    if (!nombre.trim()) nuevosErrores.nombre = "El nombre es obligatorio";
+    if (!fechaNacimiento.trim() || fechaNacimiento.length < 10)
+      nuevosErrores.fechaNacimiento = "Formato correcto: DD/MM/AAAA";
+
+    const emailLimpio = email.trim().toLowerCase();
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailLimpio) nuevosErrores.email = "Obligatorio";
+    else if (!regex.test(emailLimpio)) nuevosErrores.email = "Correo inválido";
+
+    if (!universidad.trim()) nuevosErrores.universidad = "Obligatorio";
+
+    const passRegex = /^(?=.*[A-Z])(?=.*\d).{6,}$/;
+    if (!password) nuevosErrores.password = "Obligatorio";
+    else if (!passRegex.test(password))
+      nuevosErrores.password = "6+ caracteres, 1 mayúscula y 1 número";
+
+    if (!confirmPassword) nuevosErrores.confirmPassword = "Confirma tu contraseña";
+    else if (password !== confirmPassword)
+      nuevosErrores.confirmPassword = "No coinciden";
+
+    if (!aceptaTerminos) nuevosErrores.terminos = "Debes aceptar los términos";
+
+    setErrors(nuevosErrores);
+    return Object.keys(nuevosErrores).length === 0;
+  };
+
+  /* -----------------------------
+     REGISTRO (CORREGIDO)
+  ------------------------------ */
+  const handleRegistro = async () => {
+    if (!validarFormulario()) {
+      Alert.alert("Error", "Corrige los campos marcados");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const emailLimpio = formData.email.trim().toLowerCase();
+
+      const usuarioExistente = await buscarUsuarioPorEmail(emailLimpio);
+
+      if (usuarioExistente) {
+        setLoading(false);
+        setErrors(prev => ({ ...prev, email: "Este correo ya está registrado" }));
+        Alert.alert("Error", "Este correo ya está registrado");
+        return;
+      }
+
+      const resultado = await registrarUsuario({
+        ...formData,
+        email: emailLimpio,
+      });
+
+      setLoading(false);
+
+      if (resultado.ok) {
+        Alert.alert("Éxito", "Cuenta creada correctamente");
+        navigation.navigate("Login");
+      } else {
+        Alert.alert("Error", resultado.mensaje);
+      }
+
+    } catch (e) {
+      console.log("❌ Error registro:", e);
+      setLoading(false);
+      Alert.alert("Error", "Ocurrió un error inesperado");
+    }
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color="#374151" />
+
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={28} color="#4B5563" />
         </TouchableOpacity>
 
         <View style={styles.header}>
@@ -82,218 +135,239 @@ export default function PantallaRegistro({ navigation }) {
         </View>
 
         <View style={styles.form}>
+
+          {/* Nombre */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Nombre completo</Text>
             <TextInput
-              style={styles.input}
-              placeholder="Nombre"
+              style={[styles.input, errors.nombre && styles.inputError]}
+              placeholder="Ej: Juan Pérez"
               value={formData.nombre}
-              onChangeText={(text) => updateFormData('nombre', text)}
+              onChangeText={(t) => updateFormData("nombre", t)}
             />
+            {errors.nombre && <Text style={styles.errorText}>{errors.nombre}</Text>}
           </View>
 
+          {/* Fecha */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Fecha de nacimiento</Text>
+            <TextInput
+              style={[styles.input, errors.fechaNacimiento && styles.inputError]}
+              placeholder="DD/MM/AAAA"
+              maxLength={10}
+              keyboardType="numeric"
+              value={formData.fechaNacimiento}
+              onChangeText={formatFecha}
+            />
+            {errors.fechaNacimiento && <Text style={styles.errorText}>{errors.fechaNacimiento}</Text>}
+          </View>
+
+          {/* Email */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Correo electrónico</Text>
             <TextInput
-              style={styles.input}
-              placeholder="tu@email.com"
+              style={[styles.input, errors.email && styles.inputError]}
+              placeholder="correo@ejemplo.com"
               value={formData.email}
-              onChangeText={(text) => updateFormData('email', text)}
-              keyboardType="email-address"
               autoCapitalize="none"
+              keyboardType="email-address"
+              onChangeText={(t) => updateFormData("email", t)}
             />
+            {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
           </View>
 
+          {/* Universidad */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Universidad</Text>
             <TextInput
-              style={styles.input}
-              placeholder="Tu universidad"
+              style={[styles.input, errors.universidad && styles.inputError]}
+              placeholder="Ej: UNAM, UDG..."
               value={formData.universidad}
-              onChangeText={(text) => updateFormData('universidad', text)}
+              onChangeText={(t) => updateFormData("universidad", t)}
             />
+            {errors.universidad && <Text style={styles.errorText}>{errors.universidad}</Text>}
           </View>
 
+          {/* Contraseña */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Contraseña</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="••••••••"
-              value={formData.password}
-              onChangeText={(text) => updateFormData('password', text)}
-              secureTextEntry
-            />
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={[styles.passwordInput, errors.password && styles.inputError]}
+                placeholder="••••••"
+                secureTextEntry={!showPassword}
+                value={formData.password}
+                onChangeText={(t) => updateFormData("password", t)}
+              />
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                <Ionicons name={showPassword ? "eye-off" : "eye"} size={26} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+            {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
           </View>
 
+          {/* Confirmar */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Confirmar contraseña</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="••••••••"
-              value={formData.confirmPassword}
-              onChangeText={(text) => updateFormData('confirmPassword', text)}
-              secureTextEntry
-            />
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={[styles.passwordInput, errors.confirmPassword && styles.inputError]}
+                placeholder="••••••"
+                secureTextEntry={!showConfirm}
+                value={formData.confirmPassword}
+                onChangeText={(t) => updateFormData("confirmPassword", t)}
+              />
+              <TouchableOpacity onPress={() => setShowConfirm(!showConfirm)}>
+                <Ionicons name={showConfirm ? "eye-off" : "eye"} size={26} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+            {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword}</Text>}
           </View>
 
+          {/* Tipo */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Tipo de usuario</Text>
-            <View style={styles.radioGroup}>
-              {[
-                { value: 'estudiante', label: 'Estudiante (buscar tutorías)' },
-                { value: 'tutor', label: 'Tutor (ofrecer tutorías)' },
-                { value: 'ambos', label: 'Ambos' }
-              ].map((option) => (
-                <TouchableOpacity
-                  key={option.value}
-                  style={[
-                    styles.radioOption,
-                    formData.tipoUsuario === option.value && styles.radioOptionSelected
-                  ]}
-                  onPress={() => updateFormData('tipoUsuario', option.value)}
-                >
-                  <View style={styles.radioCircle}>
-                    {formData.tipoUsuario === option.value && (
-                      <View style={styles.radioInnerCircle} />
-                    )}
-                  </View>
-                  <Text style={styles.radioLabel}>{option.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            {["estudiante", "tutor", "ambos"].map((tipo) => (
+              <TouchableOpacity
+                key={tipo}
+                style={[styles.radioOption, formData.tipoUsuario === tipo && styles.radioOptionSelected]}
+                onPress={() => updateFormData("tipoUsuario", tipo)}
+              >
+                <View style={styles.radioCircle}>
+                  {formData.tipoUsuario === tipo && <View style={styles.radioInnerCircle} />}
+                </View>
+                <Text style={styles.radioLabel}>
+                  {tipo === "estudiante"
+                    ? "Estudiante (buscar tutorías)"
+                    : tipo === "tutor"
+                    ? "Tutor (ofrecer tutorías)"
+                    : "Ambos"}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
 
-          {/* Switch de términos y condiciones */}
+          {/* Terminos */}
           <View style={styles.inputGroup}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <Switch
-                value={aceptaTerminos}
-                onValueChange={setAceptaTerminos}
-              />
+            <View style={styles.terminosRow}>
+              <Switch value={aceptaTerminos} onValueChange={setAceptaTerminos} />
               <Text style={styles.label}>Acepto los términos y condiciones</Text>
             </View>
+            {errors.terminos && <Text style={styles.errorText}>{errors.terminos}</Text>}
           </View>
 
-          <TouchableOpacity style={styles.registerButton} onPress={handleRegistro}>
-            <Text style={styles.registerButtonText}>Crear cuenta</Text>
+          {/* Botón */}
+          <TouchableOpacity
+            style={styles.registerButton}
+            onPress={handleRegistro}
+            disabled={loading}
+          >
+            {loading
+              ? <ActivityIndicator color="white" />
+              : <Text style={styles.registerButtonText}>Crear cuenta</Text>}
           </TouchableOpacity>
 
+          {/* Ir al login */}
           <View style={styles.loginContainer}>
-            <Text style={styles.loginText}>¿Ya tienes cuenta? </Text>
+            <Text style={styles.loginText}>¿Ya tienes cuenta?</Text>
             <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-              <Text style={styles.loginLink}>Inicia sesión</Text>
+              <Text style={styles.loginLink}> Inicia sesión</Text>
             </TouchableOpacity>
           </View>
+
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
+/* -----------------------------
+   ESTILOS
+------------------------------ */
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: 'white',
-  },
-  scrollContent: {
-    flexGrow: 1,
-    padding: 24,
-  },
-  backButton: {
-    alignSelf: 'flex-start',
-    marginBottom: 32,
-  },
-  header: {
-    marginBottom: 32,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-  },
-  form: {
-    gap: 20,
-  },
-  inputGroup: {
-    gap: 8,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#374151',
-  },
+  container: { flex: 1, backgroundColor: 'white' },
+  scrollContent: { flexGrow: 1, padding: 24 },
+  backButton: { padding: 4, marginBottom: 20 },
+  header: { marginBottom: 20 },
+  title: { fontSize: 32, fontWeight: 'bold', color: '#1F2937' },
+  subtitle: { fontSize: 16, color: '#6B7280' },
+  form: { gap: 22 },
+  inputGroup: { gap: 6 },
+  label: { fontSize: 15, fontWeight: '500', color: '#374151' },
   input: {
     borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
+    borderColor: "#D1D5DB",
+    borderRadius: 10,
     padding: 12,
     fontSize: 16,
+    backgroundColor: "white"
   },
-  radioGroup: {
-    gap: 8,
+  inputError: { borderColor: "red" },
+  errorText: { color: "red", fontSize: 13 },
+  passwordContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
+    borderRadius: 10,
+    paddingHorizontal: 12
+  },
+  passwordInput: {
+    flex: 1,
+    paddingVertical: 12,
+    borderWidth: 0,
+    fontSize: 16
   },
   radioOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 12,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    gap: 12,
+    borderColor: "#D1D5DB",
+    borderRadius: 10,
+    gap: 12
   },
   radioOptionSelected: {
-    borderColor: '#8B5CF6',
-    backgroundColor: '#F3F4F6',
+    borderColor: "#8B5CF6",
+    backgroundColor: "#F5F3FF"
   },
   radioCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     borderWidth: 2,
-    borderColor: '#D1D5DB',
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderColor: "#8B5CF6",
+    justifyContent: "center",
+    alignItems: "center"
   },
   radioInnerCircle: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#8B5CF6',
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#8B5CF6"
   },
-  radioLabel: {
-    flex: 1,
-    fontSize: 14,
-    color: '#374151',
-  },
+  radioLabel: { flex: 1, fontSize: 15, color: "#374151" },
+  terminosRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   registerButton: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: "#8B5CF6",
     padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 8,
+    borderRadius: 12,
+    alignItems: "center",
+    shadowColor: "#8B5CF6",
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4
   },
   registerButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
+    color: "white",
+    fontSize: 17,
+    fontWeight: "700"
   },
   loginContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 16,
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 10
   },
-  loginText: {
-    color: '#6B7280',
-    fontSize: 14,
-  },
-  loginLink: {
-    color: '#8B5CF6',
-    fontSize: 14,
-    fontWeight: '500',
-  },
+  loginText: { color: "#6B7280", fontSize: 14 },
+  loginLink: { color: "#8B5CF6", fontSize: 14, fontWeight: "600" }
 });

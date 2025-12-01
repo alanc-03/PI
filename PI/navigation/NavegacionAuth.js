@@ -3,6 +3,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import PantallaBienvenida from '../screens/PantallaBienvenida';
 import PantallaLogin from '../screens/PantallaLogin';
 import PantallaRegistro from '../screens/PantallaRegistro';
+import PantallaInicio from '../screens/PantallaInicio';
 import NavegacionPrincipal from './NavegacionPrincipal';
 
 const Stack = createStackNavigator();
@@ -17,6 +18,7 @@ export default function NavegacionAuth() {
       <Stack.Screen name="Login" component={PantallaLogin} />
       <Stack.Screen name="Registro" component={PantallaRegistro} />
       <Stack.Screen name="Principal" component={NavegacionPrincipal} />
+      <Stack.Screen name="PantallaInicio" component={PantallaInicio} />
     </Stack.Navigator>
   );
 }

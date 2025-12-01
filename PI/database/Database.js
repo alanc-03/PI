@@ -1,144 +1,108 @@
-// =============================================================
-// Importación y conexión a SQLite según el dispositivo
-// =============================================================
-import * as SQLite from 'expo-sqlite';
-import { Platform } from 'react-native';
+import { openDatabaseSync } from "expo-sqlite";
+import * as Crypto from "expo-crypto";
 
-let db;
+const db = openDatabaseSync("luminaDB.db");
 
-// Función para abrir la base de datos de forma segura
-const abrirBaseDeDatos = () => {
+/* -----------------------------------------
+   CREAR TABLA
+------------------------------------------ */
+export const inicializarBaseDeDatos = () => {
+  db.execSync(`
+    CREATE TABLE IF NOT EXISTS usuarios (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      nombre TEXT,
+      fechaNacimiento TEXT,
+      email TEXT UNIQUE,
+      universidad TEXT,
+      password TEXT,
+      tipoUsuario TEXT
+    );
+  `);
+
+  console.log("📌 Base de datos lista");
+};
+
+/* -----------------------------------------
+   ENCRIPTAR CONTRASEÑA
+------------------------------------------ */
+export const encriptarPassword = async (password) => {
+  return await Crypto.digestStringAsync(
+    Crypto.CryptoDigestAlgorithm.SHA256,
+    password
+  );
+};
+
+/* -----------------------------------------
+   BUSCAR USUARIO POR EMAIL
+------------------------------------------ */
+export const buscarUsuarioPorEmail = async (email) => {
   try {
-    if (Platform.OS === "android") {
-      console.log("📱 Base de datos cargada: ANDROID");
-      return SQLite.openDatabase('lumina_android.db');
-    } else if (Platform.OS === "ios") {
-      console.log("🍎 Base de datos cargada: IOS");
-      return SQLite.openDatabase('lumina_ios.db');
-    } else if (Platform.OS === "web") {
-      console.log("💻 Web detectada, SQLite no soportado. Usando fallback temporal.");
-      // Fallback: objeto simulado para no romper la app
-      return {
-        transaction: (fn) => {
-          console.log("Simulando transacción SQLite en Web");
-          fn({
-            executeSql: (sql, params, success, error) => {
-              console.log("SQL simulado:", sql, params);
-              if (success) success(null, { rows: { _array: [] } });
-            }
-          });
-        }
-      };
-    } else {
-      console.log("⚠️ Plataforma desconocida. Usando fallback SQLite");
-      return {
-        transaction: (fn) => { fn({ executeSql: () => {} }); }
-      };
-    }
+    const usuario = await db.getFirstAsync(
+      `SELECT * FROM usuarios WHERE email = ?`,
+      [email]
+    );
+    return usuario || null;
   } catch (error) {
-    console.log("❌ Error al abrir la base de datos:", error);
-    // Fallback seguro
-    return { transaction: (fn) => { fn({ executeSql: () => {} }); } };
+    console.log("❌ Error buscando usuario:", error);
+    return null;
   }
 };
 
-// Inicializamos la base
-db = abrirBaseDeDatos();
+/* -----------------------------------------
+   REGISTRAR USUARIO
+------------------------------------------ */
+export const registrarUsuario = async (usuario) => {
+  try {
+    const existente = await buscarUsuarioPorEmail(usuario.email);
 
-// =============================================================
-// Inicialización de la Base de Datos
-// =============================================================
-export const inicializarBaseDeDatos = () => {
-  db.transaction(tx => {
+    if (existente) {
+      return { ok: false, mensaje: "El correo ya está registrado." };
+    }
 
-    // Tabla de usuarios
-    tx.executeSql(`
-      CREATE TABLE IF NOT EXISTS usuarios (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        nombre TEXT NOT NULL,
-        email TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL,
-        universidad TEXT,
-        tipo_usuario TEXT DEFAULT 'estudiante',
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
+    const passwordEncriptada = await encriptarPassword(usuario.password);
 
-    // Tabla de tutorías
-    tx.executeSql(`
-      CREATE TABLE IF NOT EXISTS tutorias (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        materia TEXT NOT NULL,
-        categoria TEXT NOT NULL,
-        nivel TEXT NOT NULL,
-        descripcion TEXT,
-        precio TEXT NOT NULL,
-        modalidad TEXT NOT NULL,
-        duracion TEXT NOT NULL,
-        tutor_id INTEGER,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
+    await db.runAsync(
+      `INSERT INTO usuarios (nombre, fechaNacimiento, email, universidad, password, tipoUsuario)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        usuario.nombre,
+        usuario.fechaNacimiento,
+        usuario.email,
+        usuario.universidad,
+        passwordEncriptada,
+        usuario.tipoUsuario,
+      ]
+    );
 
-    // Tabla de sesiones agendadas
-    tx.executeSql(`
-      CREATE TABLE IF NOT EXISTS sesiones (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        tutoria_id INTEGER,
-        estudiante_id INTEGER,
-        fecha DATETIME NOT NULL,
-        estado TEXT DEFAULT 'pendiente',
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
+    return { ok: true };
 
-    // Tabla de mensajes
-    tx.executeSql(`
-      CREATE TABLE IF NOT EXISTS mensajes (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        chat_id TEXT NOT NULL,
-        remitente_id INTEGER,
-        mensaje TEXT NOT NULL,
-        fecha DATETIME DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-
-  });
+  } catch (error) {
+    console.log("❌ Error registrando usuario:", error);
+    return { ok: false, mensaje: "Error interno al registrar" };
+  }
 };
 
-// =============================================================
-// Registrar Usuario
-// =============================================================
-export const registrarUsuario = (usuario, callback) => {
-  const { nombre, email, universidad, password, tipoUsuario } = usuario;
+/* -----------------------------------------
+   LOGIN
+------------------------------------------ */
+export const verificarLogin = async (email, passwordIngresada) => {
+  try {
+    const usuario = await buscarUsuarioPorEmail(email);
 
-  db.transaction(tx => {
-    tx.executeSql(
-      `INSERT INTO usuarios (nombre, email, password, universidad, tipo_usuario)
-       VALUES (?, ?, ?, ?, ?)`,
-      [nombre, email, password, universidad, tipoUsuario],
-      (_, result) => callback(result),
-      (_, error) => {
-        console.log("❌ Error al registrar usuario:", error);
-        return true;
-      }
-    );
-  });
-};
+    if (!usuario) {
+      return { ok: false, mensaje: "No existe un usuario con este correo" };
+    }
 
-// =============================================================
-// Login de Usuario
-// =============================================================
-export const loginUsuario = (email, password, callback) => {
-  db.transaction(tx => {
-    tx.executeSql(
-      `SELECT * FROM usuarios WHERE email = ? AND password = ?`,
-      [email, password],
-      (_, { rows }) => callback(rows._array),
-      (_, error) => {
-        console.log("❌ Error al iniciar sesión:", error);
-        return true;
-      }
-    );
-  });
+    const passwordHash = await encriptarPassword(passwordIngresada);
+
+    if (passwordHash !== usuario.password) {
+      return { ok: false, mensaje: "Contraseña incorrecta" };
+    }
+
+    return { ok: true, usuario };
+
+  } catch (error) {
+    console.log("❌ Error login:", error);
+    return { ok: false, mensaje: "Error interno" };
+  }
 };

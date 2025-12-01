@@ -1,21 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { obtenerTutorias } from '../database/Database';
 
-export default function PantallaInicio({ navigation }) {
-  const [tutorias, setTutorias] = useState([]);
+export default function PantallaInicio({ navigation, route }) {
+
+  const usuario = route.params?.usuario;  // 👈 Recibimos usuario desde login
+
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState('Todas');
-
-  useEffect(() => {
-    cargarTutorias();
-  }, []);
-
-  const cargarTutorias = () => {
-    obtenerTutorias((tutorias) => {
-      setTutorias(tutorias);
-    });
-  };
 
   const categorias = ['Todas', 'Matemáticas', 'Programación', 'Ciencias', 'Idiomas'];
 
@@ -47,17 +38,18 @@ export default function PantallaInicio({ navigation }) {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Header */}
+
         <View style={styles.header}>
           <View style={styles.headerTop}>
             <View>
               <Text style={styles.saludo}>Hola,</Text>
-              <Text style={styles.nombre}>Yuliana Valdez</Text>
+
+              {/* 🔥 Aquí mostramos el nombre real del usuario */}
+              <Text style={styles.nombre}>{usuario?.nombre}</Text>
+
             </View>
-            <TouchableOpacity 
-              style={styles.notificationButton}
-              onPress={() => navigation.navigate('Notificaciones')}
-            >
+
+            <TouchableOpacity style={styles.notificationButton}>
               <Ionicons name="notifications-outline" size={24} color="white" />
               <View style={styles.notificationBadge}>
                 <Text style={styles.notificationText}>3</Text>
@@ -98,7 +90,7 @@ export default function PantallaInicio({ navigation }) {
           </ScrollView>
         </View>
 
-        {/* Tutorías Disponibles */}
+        {/* Lista tutorías */}
         <View style={styles.tutoriasSection}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Tutorías Disponibles</Text>
@@ -109,11 +101,7 @@ export default function PantallaInicio({ navigation }) {
 
           <View style={styles.tutoriasList}>
             {tutoriasEjemplo.map((tutoria) => (
-              <TouchableOpacity 
-                key={tutoria.id}
-                style={styles.tutoriaCard}
-                onPress={() => navigation.navigate('PerfilTutor')}
-              >
+              <TouchableOpacity key={tutoria.id} style={styles.tutoriaCard}>
                 <View style={styles.tutoriaHeader}>
                   <View style={styles.avatarContainer}>
                     <Text style={styles.avatarText}>{tutoria.avatar}</Text>
@@ -144,20 +132,18 @@ export default function PantallaInicio({ navigation }) {
               </TouchableOpacity>
             ))}
           </View>
+
         </View>
+
       </ScrollView>
     </SafeAreaView>
   );
 }
 
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
-  scrollView: {
-    flex: 1,
-  },
+  container: { flex: 1, backgroundColor: '#F9FAFB' },
+  scrollView: { flex: 1 },
   header: {
     backgroundColor: '#8B5CF6',
     paddingHorizontal: 20,
@@ -170,19 +156,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
-  saludo: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 14,
-  },
-  nombre: {
-    color: 'white',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  notificationButton: {
-    position: 'relative',
-    padding: 8,
-  },
+  saludo: { color: 'rgba(255,255,255,0.8)', fontSize: 14 },
+  nombre: { color: 'white', fontSize: 20, fontWeight: 'bold' },
+  notificationButton: { position: 'relative', padding: 8 },
   notificationBadge: {
     position: 'absolute',
     top: 4,
@@ -194,20 +170,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  notificationText: {
-    color: 'white',
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
+  notificationText: { color: 'white', fontSize: 10, fontWeight: 'bold' },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'white',
     borderRadius: 12,
     paddingHorizontal: 12,
-  },
-  searchIcon: {
-    marginRight: 8,
   },
   searchInput: {
     flex: 1,
@@ -221,9 +190,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E5E7EB',
     paddingVertical: 16,
   },
-  categoriesScroll: {
-    paddingHorizontal: 20,
-  },
+  categoriesScroll: { paddingHorizontal: 20 },
   categoryButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -231,39 +198,19 @@ const styles = StyleSheet.create({
     marginRight: 8,
     backgroundColor: '#F3F4F6',
   },
-  categoryButtonSelected: {
-    backgroundColor: '#8B5CF6',
-  },
-  categoryText: {
-    fontSize: 14,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  categoryTextSelected: {
-    color: 'white',
-  },
-  tutoriasSection: {
-    padding: 20,
-  },
+  categoryButtonSelected: { backgroundColor: '#8B5CF6' },
+  categoryText: { fontSize: 14, color: '#6B7280', fontWeight: '500' },
+  categoryTextSelected: { color: 'white' },
+  tutoriasSection: { padding: 20 },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1F2937',
-  },
-  verTodasText: {
-    color: '#8B5CF6',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  tutoriasList: {
-    gap: 12,
-  },
+  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#1F2937' },
+  verTodasText: { color: '#8B5CF6', fontSize: 14, fontWeight: '500' },
+  tutoriasList: { gap: 12 },
   tutoriaCard: {
     backgroundColor: 'white',
     borderRadius: 12,
@@ -271,10 +218,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
-  tutoriaHeader: {
-    flexDirection: 'row',
-    marginBottom: 12,
-  },
+  tutoriaHeader: { flexDirection: 'row', marginBottom: 12 },
   avatarContainer: {
     width: 48,
     height: 48,
@@ -284,66 +228,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
   },
-  avatarText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  tutoriaInfo: {
-    flex: 1,
-  },
-  tutoriaMateria: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    marginBottom: 2,
-  },
-  tutoriaTutor: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 4,
-  },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  ratingText: {
-    fontSize: 14,
-    color: '#1F2937',
-    fontWeight: '500',
-  },
-  reviewsText: {
-    fontSize: 12,
-    color: '#9CA3AF',
-  },
-  precioText: {
-    color: '#8B5CF6',
-    fontWeight: '600',
-  },
-  tutoriaFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
+  avatarText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
+  tutoriaInfo: { flex: 1 },
+  tutoriaMateria: { fontSize: 16, fontWeight: 'bold', color: '#1F2937', marginBottom: 2 },
+  tutoriaTutor: { fontSize: 14, color: '#6B7280', marginBottom: 4 },
+  ratingContainer: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  ratingText: { fontSize: 14, color: '#1F2937', fontWeight: '500' },
+  reviewsText: { fontSize: 12, color: '#9CA3AF' },
+  precioText: { color: '#8B5CF6', fontWeight: '600' },
+  tutoriaFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   categoriaBadge: {
     backgroundColor: '#F3F4F6',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
   },
-  categoriaText: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
-  disponibilidadContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  disponibilidadText: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginRight: 8,
-  },
+  categoriaText: { fontSize: 12, color: '#6B7280' },
+  disponibilidadContainer: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  disponibilidadText: { fontSize: 12, color: '#6B7280', marginRight: 8 },
 });
