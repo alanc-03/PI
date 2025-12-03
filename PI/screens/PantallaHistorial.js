@@ -74,6 +74,7 @@ export default function PantallaHistorial({ navigation }) {
 
 const styles = StyleSheet.create({
     container: {
+        marginTop:20,
         flex: 1,
         backgroundColor: '#F9FAFB',
     },

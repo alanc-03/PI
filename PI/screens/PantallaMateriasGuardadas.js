@@ -90,6 +90,7 @@ export default function PantallaMateriasGuardadas({ navigation }) {
 
 const styles = StyleSheet.create({
     container: {
+        marginTop:20,
         flex: 1,
         backgroundColor: '#F9FAFB',
     },

@@ -40,11 +40,19 @@ export default function PantallaNotificaciones({ navigation }) {
       <View style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('PantallaPerfil')} 
-          >
-            <Ionicons name="arrow-back" size={24} color="#374151" />
-          </TouchableOpacity>
+          style={styles.backButton}
+          onPress={() => {
+          if (navigation.canGoBack()) {
+            navigation.goBack();
+          } else {
+            navigation.navigate('PantallaInicio'); 
+          }
+        }}
+>
+  <Ionicons name="arrow-back" size={24} color="#374151" />
+</TouchableOpacity>
+
+
           <Text style={styles.headerTitle}>Notificaciones</Text>
           <View style={styles.badge}>
             <Text style={styles.badgeText}>
@@ -105,7 +113,7 @@ export default function PantallaNotificaciones({ navigation }) {
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 20,
+    marginTop: 25,
     flex: 1,
     backgroundColor: '#F9FAFB',
   },
