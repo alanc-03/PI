@@ -207,7 +207,7 @@ export const obtenerTutoriasPorUsuario = async (usuarioId) => {
 
 export const inscribirseClase = async (usuarioId, tutoriaId) => {
   try {
-   
+
     const existe = await db.getFirstAsync(
       `SELECT * FROM inscripciones WHERE usuarioId = ? AND tutoriaId = ?`,
       [usuarioId, tutoriaId]
@@ -227,6 +227,23 @@ export const inscribirseClase = async (usuarioId, tutoriaId) => {
   } catch (error) {
     console.log("Error inscribiendo:", error);
     return { ok: false, mensaje: "Error al inscribirse" };
+  }
+};
+
+export const obtenerInscripciones = async (usuarioId) => {
+  try {
+    const inscripciones = await db.getAllAsync(
+      `SELECT t.*, i.fecha as fechaInscripcion 
+       FROM inscripciones i 
+       JOIN tutorias t ON i.tutoriaId = t.id 
+       WHERE i.usuarioId = ? 
+       ORDER BY i.id DESC`,
+      [usuarioId]
+    );
+    return inscripciones;
+  } catch (error) {
+    console.log("Error obteniendo inscripciones:", error);
+    return [];
   }
 };
 

@@ -105,7 +105,11 @@ export default function PantallaInicio({ navigation }) {
               </Text>
             ) : (
               tutoriasFiltradas.map((tutoria) => (
-                <TouchableOpacity key={tutoria.id} style={styles.tutoriaCard}>
+                <TouchableOpacity
+                  key={tutoria.id}
+                  style={styles.tutoriaCard}
+                  onPress={() => navigation.navigate('PerfilTutor', { tutoria })}
+                >
                   <View style={styles.tutoriaHeader}>
                     <View style={styles.avatarContainer}>
                       <Text style={styles.avatarText}>
