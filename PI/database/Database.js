@@ -345,3 +345,170 @@ export const marcarNotificacionLeida = async (id) => {
     return { ok: false };
   }
 };
+
+/* -----------------------------------------
+   MATERIAS GUARDADAS
+------------------------------------------ */
+export const inicializarTablasAdicionales = () => {
+  db.execSync(`
+    CREATE TABLE IF NOT EXISTS materias_guardadas (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      usuarioId INTEGER,
+      tutoriaId INTEGER,
+      fecha TEXT,
+      FOREIGN KEY (usuarioId) REFERENCES usuarios(id),
+      FOREIGN KEY (tutoriaId) REFERENCES tutorias(id)
+    );
+  `);
+
+  db.execSync(`
+    CREATE TABLE IF NOT EXISTS historial (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      usuarioId INTEGER,
+      accion TEXT,
+      detalle TEXT,
+      fecha TEXT,
+      FOREIGN KEY (usuarioId) REFERENCES usuarios(id)
+    );
+  `);
+};
+
+// Llamar a esta función al inicio si es necesario, o integrarla en inicializarBaseDeDatos
+inicializarTablasAdicionales();
+
+export const guardarMateria = async (usuarioId, tutoriaId) => {
+  try {
+    const existe = await db.getFirstAsync(
+      `SELECT * FROM materias_guardadas WHERE usuarioId = ? AND tutoriaId = ?`,
+      [usuarioId, tutoriaId]
+    );
+
+    if (existe) {
+      return { ok: false, mensaje: "Ya has guardado esta materia" };
+    }
+
+    const fecha = new Date().toISOString();
+    await db.runAsync(
+      `INSERT INTO materias_guardadas (usuarioId, tutoriaId, fecha) VALUES (?, ?, ?)`,
+      [usuarioId, tutoriaId, fecha]
+    );
+
+    await registrarHistorial(usuarioId, "Guardar Materia", `Guardaste la tutoría ID: ${tutoriaId}`);
+    return { ok: true };
+  } catch (error) {
+    console.log("Error guardando materia:", error);
+    return { ok: false, mensaje: "Error al guardar materia" };
+  }
+};
+
+export const obtenerMateriasGuardadas = async (usuarioId) => {
+  try {
+    const materias = await db.getAllAsync(
+      `SELECT t.*, mg.id as guardadoId, mg.fecha as fechaGuardado
+       FROM materias_guardadas mg
+       JOIN tutorias t ON mg.tutoriaId = t.id
+       WHERE mg.usuarioId = ?
+       ORDER BY mg.id DESC`,
+      [usuarioId]
+    );
+    return materias;
+  } catch (error) {
+    console.log("Error obteniendo materias guardadas:", error);
+    return [];
+  }
+};
+
+export const eliminarMateriaGuardada = async (usuarioId, tutoriaId) => {
+  try {
+    await db.runAsync(
+      `DELETE FROM materias_guardadas WHERE usuarioId = ? AND tutoriaId = ?`,
+      [usuarioId, tutoriaId]
+    );
+    return { ok: true };
+  } catch (error) {
+    console.log("Error eliminando materia guardada:", error);
+    return { ok: false };
+  }
+};
+
+/* -----------------------------------------
+   HISTORIAL
+------------------------------------------ */
+export const registrarHistorial = async (usuarioId, accion, detalle) => {
+  try {
+    const fecha = new Date().toISOString();
+    await db.runAsync(
+      `INSERT INTO historial (usuarioId, accion, detalle, fecha) VALUES (?, ?, ?, ?)`,
+      [usuarioId, accion, detalle, fecha]
+    );
+    return { ok: true };
+  } catch (error) {
+    console.log("Error registrando historial:", error);
+    return { ok: false };
+  }
+};
+
+export const obtenerHistorial = async (usuarioId) => {
+  try {
+    const historial = await db.getAllAsync(
+      `SELECT * FROM historial WHERE usuarioId = ? ORDER BY id DESC`,
+      [usuarioId]
+    );
+    return historial;
+  } catch (error) {
+    console.log("Error obteniendo historial:", error);
+    return [];
+  }
+};
+
+/* -----------------------------------------
+   CONFIGURACIÓN / PERFIL
+------------------------------------------ */
+/* -----------------------------------------
+   CONFIGURACIÓN / PERFIL
+------------------------------------------ */
+export const inicializarColumnasPerfil = () => {
+  try {
+    db.execSync(`ALTER TABLE usuarios ADD COLUMN alias TEXT;`);
+  } catch (e) { }
+  try {
+    db.execSync(`ALTER TABLE usuarios ADD COLUMN foto TEXT;`);
+  } catch (e) { }
+};
+
+// Llamar a esta función para asegurar que las columnas existan
+inicializarColumnasPerfil();
+
+export const actualizarPerfilCompleto = async (usuarioId, datos) => {
+  try {
+    const { nombre, fechaNacimiento, alias, foto } = datos;
+
+    await db.runAsync(
+      `UPDATE usuarios 
+       SET nombre = ?, 
+           fechaNacimiento = ?, 
+           alias = ?, 
+           foto = ? 
+       WHERE id = ?`,
+      [nombre, fechaNacimiento, alias, foto, usuarioId]
+    );
+
+    await registrarHistorial(usuarioId, "Actualizar Perfil", "Actualizaste tu información de perfil");
+
+    // Devolver el usuario actualizado para actualizar la sesión
+    const usuarioActualizado = await db.getFirstAsync(
+      `SELECT * FROM usuarios WHERE id = ?`,
+      [usuarioId]
+    );
+
+    return { ok: true, usuario: usuarioActualizado };
+  } catch (error) {
+    console.log("Error actualizando perfil completo:", error);
+    return { ok: false, mensaje: "Error al actualizar perfil" };
+  }
+};
+
+export const actualizarPerfil = async (usuarioId, nombre) => {
+  // Mantener compatibilidad hacia atrás o redirigir a la nueva función
+  return actualizarPerfilCompleto(usuarioId, { nombre });
+};
