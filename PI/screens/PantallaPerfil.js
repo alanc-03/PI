@@ -208,6 +208,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   headerTitle: {
+    marginTop: 10,
     fontSize: 20,
     fontWeight: 'bold',
     color: 'white',

@@ -14,7 +14,7 @@ export default function PantallaNotificaciones({ navigation }) {
     if (usuario) {
       const data = await obtenerNotificaciones(usuario.id);
       setNotificaciones(data);
-    }
+    } 
   };
 
   useFocusEffect(
@@ -41,7 +41,7 @@ export default function PantallaNotificaciones({ navigation }) {
         <View style={styles.headerContent}>
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => navigation.goBack()}
+            onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('PantallaPerfil')} 
           >
             <Ionicons name="arrow-back" size={24} color="#374151" />
           </TouchableOpacity>
@@ -105,6 +105,7 @@ export default function PantallaNotificaciones({ navigation }) {
 
 const styles = StyleSheet.create({
   container: {
+    marginTop: 20,
     flex: 1,
     backgroundColor: '#F9FAFB',
   },
