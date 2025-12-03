@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView } from 'react-native';
+import {
+  View, Text, TextInput, TouchableOpacity,
+  StyleSheet, SafeAreaView, ScrollView
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { obtenerTutorias } from '../database/Database';
 
@@ -7,6 +10,7 @@ export default function PantallaBuscar({ navigation }) {
   const [busqueda, setBusqueda] = useState('');
   const [tutorias, setTutorias] = useState([]);
   const [resultados, setResultados] = useState([]);
+
   const [filtros, setFiltros] = useState({
     modalidad: '',
     precio: '',
@@ -21,34 +25,49 @@ export default function PantallaBuscar({ navigation }) {
 
   useEffect(() => {
     cargarTutorias();
-    const unsubscribe = navigation.addListener('focus', () => {
-      cargarTutorias();
-    });
+    const unsubscribe = navigation.addListener('focus', () => cargarTutorias());
     return unsubscribe;
   }, [navigation]);
 
-  // Efecto para búsqueda en tiempo real
+  // 🔍 BÚSQUEDA EN TIEMPO REAL
   useEffect(() => {
     if (busqueda.trim() === '') {
       setResultados(tutorias);
-    } else {
-      const filtrados = tutorias.filter(t =>
-        t.materia.toLowerCase().includes(busqueda.toLowerCase()) ||
-        (t.tutorNombre && t.tutorNombre.toLowerCase().includes(busqueda.toLowerCase()))
-      );
-      setResultados(filtrados);
+      return;
     }
+
+    const filtrados = tutorias.filter(t =>
+      t.materia?.toLowerCase().includes(busqueda.toLowerCase()) ||
+      t.tutorNombre?.toLowerCase().includes(busqueda.toLowerCase())
+    );
+
+    setResultados(filtrados);
   }, [busqueda, tutorias]);
 
+  // 🎯 APLICAR FILTROS
   const aplicarFiltros = () => {
-    let filtrados = tutorias;
+    let filtrados = [...tutorias];
 
-    if (filtros.modalidad) {
-      filtrados = filtrados.filter(t => t.modalidad.toLowerCase() === filtros.modalidad.toLowerCase());
+    if (filtros.modalidad !== '') {
+      filtrados = filtrados.filter(t => t.modalidad === filtros.modalidad);
     }
 
     if (filtros.precio) {
-      filtrados = filtrados.filter(t => t.precio.includes(filtros.precio));
+      filtrados = filtrados.filter(t => {
+        // Limpiar el precio de símbolos como '$' y convertir a número
+        const precioNumerico = parseFloat(t.precio.toString().replace(/[^0-9.]/g, ''));
+
+        if (isNaN(precioNumerico)) return true; // Si no es número, no filtrar (o filtrar, según preferencia)
+
+        if (filtros.precio === 'bajo') {
+          return precioNumerico <= 50; // Ajustado rango para ser más realista
+        } else if (filtros.precio === 'medio') {
+          return precioNumerico > 50 && precioNumerico <= 100;
+        } else if (filtros.precio === 'alto') {
+          return precioNumerico > 100;
+        }
+        return true;
+      });
     }
 
     setResultados(filtrados);
@@ -56,28 +75,28 @@ export default function PantallaBuscar({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.buscadorContainer}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="arrow-back" size={24} color="#374151" />
-          </TouchableOpacity>
-          <View style={styles.buscador}>
-            <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Buscar..."
-              value={busqueda}
-              onChangeText={setBusqueda}
-            />
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+
+        {/* 🔍 BUSCADOR */}
+        <View style={styles.header}>
+          <View style={styles.buscadorContainer}>
+            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+              <Ionicons name="arrow-back" size={24} color="#374151" />
+            </TouchableOpacity>
+
+            <View style={styles.buscador}>
+              <Ionicons name="search" size={20} color="#6B7280" style={styles.searchIcon} />
+              <TextInput
+                placeholder="Buscar materia o tutor..."
+                style={styles.searchInput}
+                value={busqueda}
+                onChangeText={setBusqueda}
+              />
+            </View>
           </View>
         </View>
-      </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Filtros */}
+        {/* 🎛 FILTROS */}
         <View style={styles.filtrosSection}>
           <Text style={styles.filtrosTitle}>Filtros</Text>
 
@@ -85,41 +104,26 @@ export default function PantallaBuscar({ navigation }) {
           <View style={styles.filtroGroup}>
             <Text style={styles.filtroLabel}>Modalidad</Text>
             <View style={styles.filtroOpciones}>
-              <TouchableOpacity
-                style={[
-                  styles.filtroButton,
-                  filtros.modalidad === 'online' && styles.filtroButtonActivo
-                ]}
-                onPress={() => setFiltros(prev => ({
-                  ...prev,
-                  modalidad: prev.modalidad === 'online' ? '' : 'online'
-                }))}
-              >
-                <Text style={[
-                  styles.filtroButtonText,
-                  filtros.modalidad === 'online' && styles.filtroButtonTextActivo
-                ]}>
-                  En línea
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.filtroButton,
-                  filtros.modalidad === 'presencial' && styles.filtroButtonActivo
-                ]}
-                onPress={() => setFiltros(prev => ({
-                  ...prev,
-                  modalidad: prev.modalidad === 'presencial' ? '' : 'presencial'
-                }))}
-              >
-                <Text style={[
-                  styles.filtroButtonText,
-                  filtros.modalidad === 'presencial' && styles.filtroButtonTextActivo
-                ]}>
-                  Presencial
-                </Text>
-              </TouchableOpacity>
+              {['En línea', 'Presencial'].map((modo) => (
+                <TouchableOpacity
+                  key={modo}
+                  style={[
+                    styles.filtroButton,
+                    filtros.modalidad === modo && styles.filtroButtonActivo
+                  ]}
+                  onPress={() => setFiltros(prev => ({
+                    ...prev,
+                    modalidad: prev.modalidad === modo ? '' : modo
+                  }))}
+                >
+                  <Text style={[
+                    styles.filtroButtonText,
+                    filtros.modalidad === modo && styles.filtroButtonTextActivo
+                  ]}>
+                    {modo}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
           </View>
 
@@ -127,41 +131,30 @@ export default function PantallaBuscar({ navigation }) {
           <View style={styles.filtroGroup}>
             <Text style={styles.filtroLabel}>Precio</Text>
             <View style={styles.filtroOpciones}>
-              <TouchableOpacity
-                style={[
-                  styles.filtroButton,
-                  filtros.precio === '80-100' && styles.filtroButtonActivo
-                ]}
-                onPress={() => setFiltros(prev => ({
-                  ...prev,
-                  precio: prev.precio === '80-100' ? '' : '80-100'
-                }))}
-              >
-                <Text style={[
-                  styles.filtroButtonText,
-                  filtros.precio === '80-100' && styles.filtroButtonTextActivo
-                ]}>
-                  $80-$100
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.filtroButton,
-                  filtros.precio === '100-120' && styles.filtroButtonActivo
-                ]}
-                onPress={() => setFiltros(prev => ({
-                  ...prev,
-                  precio: prev.precio === '100-120' ? '' : '100-120'
-                }))}
-              >
-                <Text style={[
-                  styles.filtroButtonText,
-                  filtros.precio === '100-120' && styles.filtroButtonTextActivo
-                ]}>
-                  $100-$120
-                </Text>
-              </TouchableOpacity>
+              {[
+                { label: 'Bajo', value: 'bajo' },
+                { label: 'Medio', value: 'medio' },
+                { label: 'Alto', value: 'alto' }
+              ].map(p => (
+                <TouchableOpacity
+                  key={p.value}
+                  style={[
+                    styles.filtroButton,
+                    filtros.precio === p.value && styles.filtroButtonActivo
+                  ]}
+                  onPress={() => setFiltros(prev => ({
+                    ...prev,
+                    precio: prev.precio === p.value ? '' : p.value
+                  }))}
+                >
+                  <Text style={[
+                    styles.filtroButtonText,
+                    filtros.precio === p.value && styles.filtroButtonTextActivo
+                  ]}>
+                    {p.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
           </View>
 
@@ -169,41 +162,29 @@ export default function PantallaBuscar({ navigation }) {
           <View style={styles.filtroGroup}>
             <Text style={styles.filtroLabel}>Disponibilidad</Text>
             <View style={styles.filtroGrid}>
-              <TouchableOpacity
-                style={[
-                  styles.filtroButton,
-                  filtros.disponibilidad === 'hoy' && styles.filtroButtonActivo
-                ]}
-                onPress={() => setFiltros(prev => ({
-                  ...prev,
-                  disponibilidad: prev.disponibilidad === 'hoy' ? '' : 'hoy'
-                }))}
-              >
-                <Text style={[
-                  styles.filtroButtonText,
-                  filtros.disponibilidad === 'hoy' && styles.filtroButtonTextActivo
-                ]}>
-                  Hoy
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.filtroButton,
-                  filtros.disponibilidad === 'semana' && styles.filtroButtonActivo
-                ]}
-                onPress={() => setFiltros(prev => ({
-                  ...prev,
-                  disponibilidad: prev.disponibilidad === 'semana' ? '' : 'semana'
-                }))}
-              >
-                <Text style={[
-                  styles.filtroButtonText,
-                  filtros.disponibilidad === 'semana' && styles.filtroButtonTextActivo
-                ]}>
-                  Esta semana
-                </Text>
-              </TouchableOpacity>
+              {[
+                { label: 'Hoy', value: 'hoy' },
+                { label: 'Esta semana', value: 'semana' }
+              ].map(op => (
+                <TouchableOpacity
+                  key={op.value}
+                  style={[
+                    styles.filtroButton,
+                    filtros.disponibilidad === op.value && styles.filtroButtonActivo
+                  ]}
+                  onPress={() => setFiltros(prev => ({
+                    ...prev,
+                    disponibilidad: prev.disponibilidad === op.value ? '' : op.value
+                  }))}
+                >
+                  <Text style={[
+                    styles.filtroButtonText,
+                    filtros.disponibilidad === op.value && styles.filtroButtonTextActivo
+                  ]}>
+                    {op.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
           </View>
 
@@ -212,7 +193,7 @@ export default function PantallaBuscar({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* Resultados */}
+        {/* 📌 RESULTADOS */}
         <View style={styles.resultadosSection}>
           <Text style={styles.resultadosCount}>
             {resultados.length} resultados encontrados
@@ -235,9 +216,12 @@ export default function PantallaBuscar({ navigation }) {
                       <Text style={styles.resultadoMateria}>{item.materia}</Text>
                       <Text style={styles.resultadoTutor}>{item.tutorNombre}</Text>
                     </View>
+
                     <View style={[
                       styles.modalidadBadge,
-                      item.modalidad === 'En línea' ? styles.modalidadOnline : styles.modalidadPresencial
+                      item.modalidad === 'En línea'
+                        ? styles.modalidadOnline
+                        : styles.modalidadPresencial
                     ]}>
                       <Text style={styles.modalidadText}>{item.modalidad}</Text>
                     </View>
@@ -246,9 +230,7 @@ export default function PantallaBuscar({ navigation }) {
                   <View style={styles.resultadoFooter}>
                     <View style={styles.ratingContainer}>
                       <Ionicons name="star" size={16} color="#F59E0B" />
-                      <Text style={styles.ratingText}>
-                        5.0 (Nuevo)
-                      </Text>
+                      <Text style={styles.ratingText}>5.0 (Nuevo)</Text>
                     </View>
                     <Text style={styles.precioText}>${item.precio}</Text>
                   </View>
@@ -257,16 +239,14 @@ export default function PantallaBuscar({ navigation }) {
             )}
           </View>
         </View>
+
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: 'white',
-  },
+  container: { flex: 1, backgroundColor: 'white' },
   header: {
     marginTop: 20,
     borderBottomWidth: 1,
@@ -278,9 +258,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  backButton: {
-    marginRight: 12,
-  },
+  backButton: { marginRight: 12 },
   buscador: {
     flex: 1,
     flexDirection: 'row',
@@ -289,18 +267,14 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 12,
   },
-  searchIcon: {
-    marginRight: 8,
-  },
+  searchIcon: { marginRight: 8 },
   searchInput: {
     flex: 1,
     paddingVertical: 8,
     fontSize: 16,
     color: '#1F2937',
   },
-  scrollView: {
-    flex: 1,
-  },
+  scrollView: { flex: 1 },
   filtrosSection: {
     backgroundColor: '#F9FAFB',
     padding: 20,
@@ -313,23 +287,15 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     marginBottom: 16,
   },
-  filtroGroup: {
-    marginBottom: 20,
-  },
+  filtroGroup: { marginBottom: 20 },
   filtroLabel: {
     fontSize: 14,
     fontWeight: '500',
     color: '#374151',
     marginBottom: 8,
   },
-  filtroOpciones: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  filtroGrid: {
-    flexDirection: 'row',
-    gap: 8,
-  },
+  filtroOpciones: { flexDirection: 'row', gap: 8 },
+  filtroGrid: { flexDirection: 'row', gap: 8 },
   filtroButton: {
     flex: 1,
     paddingVertical: 8,
@@ -362,17 +328,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  resultadosSection: {
-    padding: 20,
-  },
-  resultadosCount: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 16,
-  },
-  resultadosList: {
-    gap: 12,
-  },
+  resultadosSection: { padding: 20 },
+  resultadosCount: { fontSize: 14, color: '#6B7280', marginBottom: 16 },
+  resultadosList: { gap: 12 },
   resultadoCard: {
     backgroundColor: 'white',
     padding: 16,
@@ -383,11 +341,7 @@ const styles = StyleSheet.create({
   resultadoHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
     marginBottom: 12,
-  },
-  resultadoInfo: {
-    flex: 1,
   },
   resultadoMateria: {
     fontSize: 16,
@@ -395,41 +349,13 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     marginBottom: 4,
   },
-  resultadoTutor: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  modalidadBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  modalidadOnline: {
-    backgroundColor: '#EDE9FE',
-  },
-  modalidadPresencial: {
-    backgroundColor: '#D1FAE5',
-  },
-  modalidadText: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  resultadoFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  ratingText: {
-    fontSize: 14,
-    color: '#1F2937',
-  },
-  precioText: {
-    color: '#8B5CF6',
-    fontWeight: '600',
-  },
+  resultadoTutor: { fontSize: 14, color: '#6B7280' },
+  modalidadBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 },
+  modalidadOnline: { backgroundColor: '#EDE9FE' },
+  modalidadPresencial: { backgroundColor: '#D1FAE5' },
+  modalidadText: { fontSize: 12, fontWeight: '500' },
+  resultadoFooter: { flexDirection: 'row', justifyContent: 'space-between' },
+  ratingContainer: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  ratingText: { fontSize: 14, color: '#1F2937' },
+  precioText: { color: '#8B5CF6', fontWeight: '600' },
 });

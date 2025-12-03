@@ -15,21 +15,24 @@ import NavegacionPrincipal from './NavegacionPrincipal';
 import PantallaEditarTutoria from '../screens/PantallaEditarTutoria';
 
 
+import PantallaRecuperarPassword from '../screens/PantallaRecuperarPassword';
+
 const Stack = createStackNavigator();
 
 export default function NavegacionAuth() {
   return (
-    <Stack.Navigator 
+    <Stack.Navigator
       initialRouteName="Bienvenida"
       screenOptions={{ headerShown: false }}
     >
       <Stack.Screen name="Bienvenida" component={PantallaBienvenida} />
       <Stack.Screen name="Login" component={PantallaLogin} />
       <Stack.Screen name="Registro" component={PantallaRegistro} />
+      <Stack.Screen name="PantallaRecuperarPassword" component={PantallaRecuperarPassword} />
       <Stack.Screen name="Principal" component={NavegacionPrincipal} />
       <Stack.Screen name="PantallaInicio" component={PantallaInicio} />
       <Stack.Screen name="Buscar" component={PantallaBuscar} />
-      <Stack.Screen name="EditarTutoria" component={PantallaEditarTutoria}/>
+      <Stack.Screen name="EditarTutoria" component={PantallaEditarTutoria} />
       <Stack.Screen name="Calendario" component={PantallaCalendario} />
       <Stack.Screen name="Chat" component={PantallaChat} />
       <Stack.Screen name="Notificaciones" component={PantallaNotificaciones} />

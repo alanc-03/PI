@@ -1,32 +1,37 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, RefreshControl } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  SafeAreaView,
+  ScrollView,
+  RefreshControl
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getUsuarioActual } from '../utils/Session';
-import { obtenerNotificaciones, marcarNotificacionLeida } from '../database/Database';
-import { useFocusEffect } from '@react-navigation/native';
 
 export default function PantallaNotificaciones({ navigation }) {
   const [notificaciones, setNotificaciones] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
-  const usuario = getUsuarioActual();
+
+  useEffect(() => {
+    cargarNotificaciones();
+  }, []);
 
   const cargarNotificaciones = async () => {
+    const usuario = await getUsuarioActual();
     if (usuario) {
       const data = await obtenerNotificaciones(usuario.id);
       setNotificaciones(data);
-    } 
+    }
+
+    setRefreshing(false);
   };
 
-  useFocusEffect(
-    React.useCallback(() => {
-      cargarNotificaciones();
-    }, [])
-  );
-
-  const onRefresh = async () => {
+  const onRefresh = () => {
     setRefreshing(true);
-    await cargarNotificaciones();
-    setRefreshing(false);
+    cargarNotificaciones();
   };
 
   const manejarMarcarLeida = async (id) => {
@@ -36,24 +41,25 @@ export default function PantallaNotificaciones({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
+
+      {/* HEADER */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => {
-          if (navigation.canGoBack()) {
-            navigation.goBack();
-          } else {
-            navigation.navigate('PantallaInicio'); 
-          }
-        }}
->
-  <Ionicons name="arrow-back" size={24} color="#374151" />
-</TouchableOpacity>
-
+            style={styles.backButton}
+            onPress={() => {
+              if (navigation.canGoBack()) {
+                navigation.goBack();
+              } else {
+                navigation.navigate('PantallaInicio');
+              }
+            }}
+          >
+            <Ionicons name="arrow-back" size={24} color="#374151" />
+          </TouchableOpacity>
 
           <Text style={styles.headerTitle}>Notificaciones</Text>
+
           <View style={styles.badge}>
             <Text style={styles.badgeText}>
               {notificaciones.filter(n => !n.leida).length}
@@ -62,7 +68,7 @@ export default function PantallaNotificaciones({ navigation }) {
         </View>
       </View>
 
-      {/* Lista de Notificaciones */}
+      {/* LISTA DE NOTIFICACIONES */}
       <ScrollView
         style={styles.notificacionesList}
         showsVerticalScrollIndicator={false}

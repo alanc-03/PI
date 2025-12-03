@@ -563,3 +563,27 @@ export const actualizarPerfil = async (usuarioId, nombre) => {
   // Mantener compatibilidad hacia atrás o redirigir a la nueva función
   return actualizarPerfilCompleto(usuarioId, { nombre });
 };
+
+/* -----------------------------------------
+   RECUPERAR CONTRASEÑA
+------------------------------------------ */
+export const actualizarPassword = async (email, nuevaPassword) => {
+  try {
+    const usuario = await buscarUsuarioPorEmail(email);
+    if (!usuario) {
+      return { ok: false, mensaje: "El correo no está registrado" };
+    }
+
+    const passwordEncriptada = await encriptarPassword(nuevaPassword);
+
+    await db.runAsync(
+      `UPDATE usuarios SET password = ? WHERE email = ?`,
+      [passwordEncriptada, email]
+    );
+
+    return { ok: true };
+  } catch (error) {
+    console.log("Error actualizando password:", error);
+    return { ok: false, mensaje: "Error al actualizar la contraseña" };
+  }
+};

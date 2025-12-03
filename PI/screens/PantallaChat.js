@@ -13,7 +13,7 @@ export default function PantallaChat({ navigation, route }) {
   const scrollViewRef = useRef();
 
   useEffect(() => {
-    if (usuarioActual && tutor) {
+    if (usuarioActual && tutor && tutor.id) {
       cargarMensajes();
       // Polling simple para actualizar mensajes cada 3 segundos
       const interval = setInterval(cargarMensajes, 3000);
@@ -22,7 +22,7 @@ export default function PantallaChat({ navigation, route }) {
   }, [usuarioActual, tutor]);
 
   const cargarMensajes = async () => {
-    if (!usuarioActual || !tutor) return;
+    if (!usuarioActual || !tutor || !tutor.id) return;
     const data = await obtenerMensajes(usuarioActual.id, tutor.id);
     setMensajes(data);
   };

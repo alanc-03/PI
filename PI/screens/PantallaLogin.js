@@ -43,7 +43,7 @@ export default function PantallaLogin({ navigation }) {
   };
 
   const handleOlvidePassword = () => {
-    Alert.alert("Recuperar Contraseña", "Por favor contacta al soporte técnico para restablecer tu contraseña.");
+    navigation.navigate("PantallaRecuperarPassword");
   };
 
   const disabled = !email || !password || loading;
@@ -86,7 +86,7 @@ export default function PantallaLogin({ navigation }) {
             />
           </View>
 
-          <TouchableOpacity style={styles.forgotPassword}>
+          <TouchableOpacity style={styles.forgotPassword} onPress={handleOlvidePassword}>
             <Text style={styles.forgotPasswordText}>¿Olvidaste tu contraseña?</Text>
           </TouchableOpacity>
 
