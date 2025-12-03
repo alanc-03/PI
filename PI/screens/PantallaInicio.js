@@ -48,7 +48,9 @@ export default function PantallaInicio({ navigation }) {
 
             </View>
 
-            <TouchableOpacity style={styles.notificationButton}>
+            <TouchableOpacity style={styles.notificationButton}
+            onPress={() => navigation.navigate('Notificaciones')}
+            >
               <Ionicons name="notifications-outline" size={24} color="white" />
               <View style={styles.notificationBadge}>
                 <Text style={styles.notificationText}>3</Text>
