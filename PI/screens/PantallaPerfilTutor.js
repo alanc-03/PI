@@ -1,52 +1,98 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Alert, Linking, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { getUsuarioActual } from '../utils/Session';
+import { inscribirseClase, crearNotificacion } from '../database/Database';
 
-export default function PantallaPerfilTutor({ navigation }) {
-  const tutor = {
-    nombre: 'Victor Manuel',
-    especialidad: 'Matemáticas Aplicadas',
-    avatar: 'VM',
-    rating: 4.9,
-    reseñas: 45,
-    estadisticas: {
-      sesiones: 156,
-      satisfaccion: '98%',
-      experiencia: '2 años'
-    },
-    acercaDe: 'Hola, soy Victor, estudiante de ingeniería en sistemas, me gustan las matemáticas aplicadas y sé mucho sobre ellas. Estoy feliz de poder ayudarte.',
-    materias: [
-      {
-        id: 1,
-        nombre: 'Cálculo Diferencial',
-        precio: '$80-$100 MX/hr',
-        nivel: 'Básico e Intermedio'
-      },
-      {
-        id: 2,
-        nombre: 'Álgebra Lineal',
-        precio: '$80-$100 MX/hr',
-        nivel: 'Intermedio y Avanzado'
-      }
-    ],
-    reseñasRecientes: [
-      {
-        id: 1,
-        usuario: 'Yuliana Valdez',
-        avatar: 'YV',
-        rating: 5,
-        comentario: 'excelente tutor, sabe mucho.',
-        fecha: 'Hace 2 días'
-      },
-      {
-        id: 2,
-        usuario: 'María Fernanda López',
-        avatar: 'MF',
-        rating: 5,
-        comentario: 'Me ayudó mucho a entender conceptos difíciles.',
-        fecha: 'Hace 1 semana'
-      }
-    ]
+export default function PantallaPerfilTutor({ route, navigation }) {
+  // Obtener datos de la tutoría pasados por navegación
+  const { tutoria } = route.params || {};
+  const usuarioActual = getUsuarioActual();
+
+  // Si no hay tutoría (error de navegación), mostrar mensaje
+  if (!tutoria) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Text>Error al cargar la tutoría</Text>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Text style={styles.link}>Volver</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const manejarUnirse = async () => {
+    if (!usuarioActual) {
+      Alert.alert('Error', 'Debes iniciar sesión para unirte a una clase');
+      return;
+    }
+
+    if (usuarioActual.tipoUsuario === 'tutor') {
+      Alert.alert('Acceso denegado', 'Los tutores no pueden unirse a clases como estudiantes.');
+      return;
+    }
+
+    if (usuarioActual.id === tutoria.usuarioId) {
+      Alert.alert('Error', 'No puedes unirte a tu propia clase');
+      return;
+    }
+
+    Alert.alert(
+      'Unirse a la clase',
+      `¿Deseas inscribirte a la clase de ${tutoria.materia}?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Confirmar',
+          onPress: async () => {
+            const resultado = await inscribirseClase(usuarioActual.id, tutoria.id);
+            if (resultado.ok) {
+              // Crear notificación para el tutor
+              await crearNotificacion(
+                tutoria.usuarioId,
+                'Nueva inscripción',
+                `${usuarioActual.nombre} se ha inscrito a tu clase de ${tutoria.materia}`
+              );
+              Alert.alert('Éxito', 'Te has inscrito correctamente a la clase');
+            } else {
+              Alert.alert('Error', resultado.mensaje || 'No se pudo realizar la inscripción');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const manejarVerUbicacion = () => {
+    if (!tutoria.ubicacion) {
+      Alert.alert('Información', 'El tutor no ha especificado una ubicación exacta.');
+      return;
+    }
+
+    Alert.alert(
+      'Ubicación',
+      tutoria.ubicacion,
+      [
+        { text: 'Cerrar', style: 'cancel' },
+        {
+          text: 'Abrir en Mapas',
+          onPress: () => {
+            const scheme = Platform.select({ ios: 'maps:0,0?q=', android: 'geo:0,0?q=' });
+            const latLng = `${tutoria.ubicacion}`;
+            const label = 'Ubicación de la clase';
+            const url = Platform.select({
+              ios: `${scheme}${label}@${latLng}`,
+              android: `${scheme}${latLng}(${label})`
+            });
+            // Intentar abrir mapa (simple, busca por texto)
+            const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(tutoria.ubicacion)}`;
+            Linking.openURL(mapUrl);
+          }
+        }
+      ]
+    );
   };
 
   return (
@@ -55,7 +101,7 @@ export default function PantallaPerfilTutor({ navigation }) {
         {/* Header con imagen de fondo */}
         <View style={styles.header}>
           <View style={styles.headerBackground} />
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
@@ -69,108 +115,85 @@ export default function PantallaPerfilTutor({ navigation }) {
         <View style={styles.perfilInfo}>
           <View style={styles.avatarContainer}>
             <View style={styles.avatarGrande}>
-              <Text style={styles.avatarGrandeText}>{tutor.avatar}</Text>
+              <Text style={styles.avatarGrandeText}>
+                {tutoria.tutorNombre ? tutoria.tutorNombre.substring(0, 2).toUpperCase() : 'TU'}
+              </Text>
             </View>
           </View>
 
           <View style={styles.datosTutor}>
-            <Text style={styles.nombreTutor}>{tutor.nombre}</Text>
-            <Text style={styles.especialidadTutor}>{tutor.especialidad}</Text>
+            <Text style={styles.nombreTutor}>{tutoria.tutorNombre}</Text>
+            <Text style={styles.especialidadTutor}>{tutoria.categoria}</Text>
             <View style={styles.ratingContainer}>
               <Ionicons name="star" size={16} color="#F59E0B" />
               <Text style={styles.ratingText}>
-                {tutor.rating} ({tutor.reseñas} reseñas)
+                4.9 (15 reseñas) {/* Placeholder por ahora */}
               </Text>
             </View>
           </View>
 
           {/* Botones de acción */}
           <View style={styles.accionesContainer}>
-            <TouchableOpacity style={styles.botonAccionPrimario}>
-              <Ionicons name="calendar-outline" size={16} color="white" />
-              <Text style={styles.botonAccionPrimarioTexto}>Agendar</Text>
+            <TouchableOpacity
+              style={styles.botonAccionPrimario}
+              onPress={manejarUnirse}
+            >
+              <Ionicons name="school-outline" size={16} color="white" />
+              <Text style={styles.botonAccionPrimarioTexto}>Unirse a la clase</Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.botonAccionSecundario}>
+
+            <TouchableOpacity
+              style={styles.botonAccionSecundario}
+              onPress={() => navigation.navigate('Chat', { tutor: { nombre: tutoria.tutorNombre } })}
+            >
               <Ionicons name="chatbubble-outline" size={16} color="#8B5CF6" />
               <Text style={styles.botonAccionSecundarioTexto}>Mensaje</Text>
             </TouchableOpacity>
+
+            {tutoria.modalidad === 'Presencial' && (
+              <TouchableOpacity
+                style={styles.botonAccionSecundario}
+                onPress={manejarVerUbicacion}
+              >
+                <Ionicons name="location-outline" size={16} color="#8B5CF6" />
+                <Text style={styles.botonAccionSecundarioTexto}>Ver Ubicación</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
-          {/* Estadísticas */}
-          <View style={styles.estadisticasContainer}>
-            <View style={styles.estadisticaItem}>
-              <Text style={styles.estadisticaNumero}>{tutor.estadisticas.sesiones}</Text>
-              <Text style={styles.estadisticaLabel}>Sesiones</Text>
-            </View>
-            
-            <View style={[styles.estadisticaItem, styles.estadisticaItemBorde]}>
-              <Text style={styles.estadisticaNumero}>{tutor.estadisticas.satisfaccion}</Text>
-              <Text style={styles.estadisticaLabel}>Satisfacción</Text>
-            </View>
-            
-            <View style={styles.estadisticaItem}>
-              <Text style={styles.estadisticaNumero}>{tutor.estadisticas.experiencia}</Text>
-              <Text style={styles.estadisticaLabel}>Experiencia</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Acerca de */}
-        <View style={styles.seccion}>
-          <Text style={styles.seccionTitulo}>Sobre mí</Text>
-          <Text style={styles.acercaDeTexto}>{tutor.acercaDe}</Text>
-        </View>
-
-        {/* Materias */}
-        <View style={styles.seccion}>
-          <Text style={styles.seccionTitulo}>Materias</Text>
-          <View style={styles.materiasList}>
-            {tutor.materias.map((materia) => (
-              <View key={materia.id} style={styles.materiaCard}>
-                <View style={styles.materiaHeader}>
-                  <Text style={styles.materiaNombre}>{materia.nombre}</Text>
-                  <Text style={styles.materiaPrecio}>{materia.precio}</Text>
-                </View>
-                <View style={styles.nivelBadge}>
-                  <Text style={styles.nivelText}>{materia.nivel}</Text>
-                </View>
+          {/* Detalles de la Clase */}
+          <View style={styles.seccion}>
+            <Text style={styles.seccionTitulo}>Detalles de la Clase</Text>
+            <View style={styles.infoCard}>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Materia:</Text>
+                <Text style={styles.infoValue}>{tutoria.materia}</Text>
               </View>
-            ))}
-          </View>
-        </View>
-
-        {/* Reseñas */}
-        <View style={styles.seccion}>
-          <Text style={styles.seccionTitulo}>Reseñas Recientes</Text>
-          <View style={styles.resenasList}>
-            {tutor.reseñasRecientes.map((resena) => (
-              <View key={resena.id} style={styles.resenaCard}>
-                <View style={styles.resenaHeader}>
-                  <View style={styles.resenaUsuario}>
-                    <View style={styles.resenaAvatar}>
-                      <Text style={styles.resenaAvatarText}>{resena.avatar}</Text>
-                    </View>
-                    <View style={styles.resenaInfo}>
-                      <Text style={styles.resenaNombre}>{resena.usuario}</Text>
-                      <View style={styles.resenaRating}>
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <Ionicons 
-                            key={star} 
-                            name="star" 
-                            size={12} 
-                            color="#F59E0B" 
-                          />
-                        ))}
-                      </View>
-                    </View>
-                  </View>
-                  <Text style={styles.resenaFecha}>{resena.fecha}</Text>
-                </View>
-                <Text style={styles.resenaComentario}>{resena.comentario}</Text>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Nivel:</Text>
+                <Text style={styles.infoValue}>{tutoria.nivel}</Text>
               </View>
-            ))}
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Modalidad:</Text>
+                <Text style={styles.infoValue}>{tutoria.modalidad}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Duración:</Text>
+                <Text style={styles.infoValue}>{tutoria.duracion}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Precio:</Text>
+                <Text style={styles.infoValuePrecio}>{tutoria.precio}</Text>
+              </View>
+            </View>
           </View>
+
+          {/* Descripción */}
+          <View style={styles.seccion}>
+            <Text style={styles.seccionTitulo}>Descripción</Text>
+            <Text style={styles.acercaDeTexto}>{tutoria.descripcion}</Text>
+          </View>
+
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -181,6 +204,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'white',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  link: {
+    color: '#8B5CF6',
+    marginTop: 10,
+    fontWeight: 'bold',
   },
   scrollView: {
     flex: 1,
@@ -299,34 +332,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  estadisticasContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#F9FAFB',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 24,
-  },
-  estadisticaItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  estadisticaItemBorde: {
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  estadisticaNumero: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    marginBottom: 4,
-  },
-  estadisticaLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
   seccion: {
-    paddingHorizontal: 20,
     marginBottom: 24,
   },
   seccionTitulo: {
@@ -340,96 +346,32 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     lineHeight: 20,
   },
-  materiasList: {
-    gap: 12,
-  },
-  materiaCard: {
+  infoCard: {
     backgroundColor: '#F9FAFB',
     padding: 16,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    gap: 8,
   },
-  materiaHeader: {
+  infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
+    alignItems: 'center',
   },
-  materiaNombre: {
+  infoLabel: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#1F2937',
-    flex: 1,
+    color: '#6B7280',
+    fontWeight: '500',
   },
-  materiaPrecio: {
+  infoValue: {
+    fontSize: 14,
+    color: '#1F2937',
+    fontWeight: '600',
+  },
+  infoValuePrecio: {
+    fontSize: 14,
     color: '#8B5CF6',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  nivelBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#F3F4F6',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  nivelText: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
-  resenasList: {
-    gap: 16,
-  },
-  resenaCard: {
-    backgroundColor: '#F9FAFB',
-    padding: 16,
-    borderRadius: 8,
-  },
-  resenaHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
-  },
-  resenaUsuario: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  resenaAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#8B5CF6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  resenaAvatarText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  resenaInfo: {
-    flex: 1,
-  },
-  resenaNombre: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 2,
-  },
-  resenaRating: {
-    flexDirection: 'row',
-  },
-  resenaFecha: {
-    fontSize: 12,
-    color: '#9CA3AF',
-  },
-  resenaComentario: {
-    fontSize: 14,
-    color: '#6B7280',
-    lineHeight: 20,
+    fontWeight: '700',
   },
 });

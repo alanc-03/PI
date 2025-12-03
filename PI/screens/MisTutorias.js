@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-import { obtenerTutoriasPorUsuario } from '../database/Database';
+import { obtenerTutoriasPorUsuario, obtenerInscripciones } from '../database/Database';
 import { getUsuarioActual } from '../utils/Session';
 import { openDatabaseSync } from "expo-sqlite";
 
@@ -11,19 +11,36 @@ const db = openDatabaseSync("luminaDB.db");
 export default function PantallaMisTutorias({ navigation }) {
 
   const usuario = getUsuarioActual();
-  const [tutorias, setTutorias] = useState([]);
+  const [tutoriasPublicadas, setTutoriasPublicadas] = useState([]);
+  const [inscripciones, setInscripciones] = useState([]);
+  const [activeTab, setActiveTab] = useState('publicadas'); // 'publicadas' | 'inscripciones'
 
-  const cargarTutorias = async () => {
+  const cargarDatos = async () => {
     if (!usuario) return;
-    const data = await obtenerTutoriasPorUsuario(usuario.id);
-    setTutorias(data);
+
+    // Cargar tutorias publicadas si es tutor o ambos
+    if (usuario.tipoUsuario !== 'estudiante') {
+      const publicadas = await obtenerTutoriasPorUsuario(usuario.id);
+      setTutoriasPublicadas(publicadas);
+    }
+
+    // Cargar inscripciones si es estudiante o ambos
+    if (usuario.tipoUsuario !== 'tutor') {
+      const misInscripciones = await obtenerInscripciones(usuario.id);
+      setInscripciones(misInscripciones);
+    }
+
+    // Set default tab based on role
+    if (usuario.tipoUsuario === 'estudiante' && activeTab === 'publicadas') {
+      setActiveTab('inscripciones');
+    }
   };
 
   useEffect(() => {
-    cargarTutorias();
+    cargarDatos();
 
     const unsubscribe = navigation.addListener('focus', () => {
-      cargarTutorias();
+      cargarDatos();
     });
 
     return unsubscribe;
@@ -44,8 +61,7 @@ export default function PantallaMisTutorias({ navigation }) {
           onPress: async () => {
             try {
               await db.runAsync(`DELETE FROM tutorias WHERE id = ?`, [id]);
-              cargarTutorias();
-              navigation.goBack(); // 🔥 REGRESAR AUTOMÁTICAMENTE
+              cargarDatos();
             } catch (error) {
               console.log("Error eliminando tutoría:", error);
             }
@@ -55,96 +71,164 @@ export default function PantallaMisTutorias({ navigation }) {
     );
   };
 
-  return (
-    <SafeAreaView style={styles.container}>    
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.header1}> 
-          <View>
-            <Text style={styles.titulo}>Mis Tutorías</Text>
-            <Text style={styles.subtitulo}>Tutorías creadas por ti</Text>
-          </View>
-          <View>
-             <TouchableOpacity
-                     style={styles.backButton}
-                     onPress={() => navigation.goBack()}
-                   >
-                     <Ionicons name="arrow-back" size={32} color="#ffffffff" />
-                   </TouchableOpacity>
-          </View>
-        </View>
-        <View style={styles.tutoriasList}>
-          {tutorias.length === 0 ? (
-            <Text style={{ textAlign: 'center', color: '#6B7280', marginTop: 20 }}>
-              Aún no has publicado ninguna tutoría.
-            </Text>
-          ) : (
-            tutorias.map((tutoria) => (
-              <View key={tutoria.id} style={styles.tutoriaCard}>
-
-                {/* HEADER */}
-                <View style={styles.tutoriaHeader}>
-                  <View style={styles.avatarContainer}>
-                    <Text style={styles.avatarText}>
-                      {tutoria.tutorNombre ? tutoria.tutorNombre.substring(0, 2).toUpperCase() : "TU"}
-                    </Text>
-                  </View>
-
-                  <View style={styles.tutoriaInfo}>
-                    <Text style={styles.tutoriaMateria}>{tutoria.materia}</Text>
-                    <Text style={styles.tutoriaTutor}>{tutoria.tutorNombre}</Text>
-
-                    <View style={styles.ratingContainer}>
-                      <Ionicons name="star" size={16} color="#F59E0B" />
-                      <Text style={styles.ratingText}>5.0</Text>
-                      <Text style={styles.reviewsText}>(Nuevo)</Text>
-                    </View>
-                  </View>
-
-                  <Text style={styles.precioText}>${tutoria.precio}</Text>
-                </View>
-
-                {/* FOOTER */}
-                <View style={styles.tutoriaFooter}>
-                  <View style={styles.categoriaBadge}>
-                    <Text style={styles.categoriaText}>{tutoria.categoria}</Text>
-                  </View>
-
-                  <View style={styles.disponibilidadContainer}>
-                    <Ionicons name="time-outline" size={16} color="#6B7280" />
-                    <Text style={styles.disponibilidadText}>{tutoria.duracion}</Text>
-                    <Ionicons name="location-outline" size={16} color="#6B7280" />
-                    <Text style={styles.disponibilidadText}>{tutoria.modalidad}</Text>
-                  </View>
-                </View>
-
-                {/* BOTONES */}
-                <View style={styles.buttonsContainer}>
-                  
-                  <TouchableOpacity
-                    style={styles.editButton}
-                    onPress={() => {
-                      navigation.navigate("EditarTutoria", { id: tutoria.id });
-                    }}
-                  >
-                    <Ionicons name="create-outline" size={16} color="white" />
-                    <Text style={styles.buttonText}>Editar</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.deleteButton}
-                    onPress={() => eliminarTutoria(tutoria.id)}
-                  >
-                    <Ionicons name="trash-outline" size={16} color="white" />
-                    <Text style={styles.buttonText}>Eliminar</Text>
-                  </TouchableOpacity>
-
-                </View>
-
+  const renderPublicadas = () => (
+    <View style={styles.tutoriasList}>
+      {tutoriasPublicadas.length === 0 ? (
+        <Text style={styles.emptyText}>
+          Aún no has publicado ninguna tutoría.
+        </Text>
+      ) : (
+        tutoriasPublicadas.map((tutoria) => (
+          <View key={tutoria.id} style={styles.tutoriaCard}>
+            {/* HEADER */}
+            <View style={styles.tutoriaHeader}>
+              <View style={styles.avatarContainer}>
+                <Text style={styles.avatarText}>
+                  {tutoria.tutorNombre ? tutoria.tutorNombre.substring(0, 2).toUpperCase() : "TU"}
+                </Text>
               </View>
-            ))
-          )}
+
+              <View style={styles.tutoriaInfo}>
+                <Text style={styles.tutoriaMateria}>{tutoria.materia}</Text>
+                <Text style={styles.tutoriaTutor}>{tutoria.tutorNombre}</Text>
+              </View>
+
+              <Text style={styles.precioText}>${tutoria.precio}</Text>
+            </View>
+
+            {/* FOOTER */}
+            <View style={styles.tutoriaFooter}>
+              <View style={styles.categoriaBadge}>
+                <Text style={styles.categoriaText}>{tutoria.categoria}</Text>
+              </View>
+
+              <View style={styles.disponibilidadContainer}>
+                <Ionicons name="time-outline" size={16} color="#6B7280" />
+                <Text style={styles.disponibilidadText}>{tutoria.duracion}</Text>
+                <Ionicons name="location-outline" size={16} color="#6B7280" />
+                <Text style={styles.disponibilidadText}>{tutoria.modalidad}</Text>
+              </View>
+            </View>
+
+            {/* BOTONES */}
+            <View style={styles.buttonsContainer}>
+              <TouchableOpacity
+                style={styles.editButton}
+                onPress={() => {
+                  navigation.navigate("EditarTutoria", { id: tutoria.id });
+                }}
+              >
+                <Ionicons name="create-outline" size={16} color="white" />
+                <Text style={styles.buttonText}>Editar</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.deleteButton}
+                onPress={() => eliminarTutoria(tutoria.id)}
+              >
+                <Ionicons name="trash-outline" size={16} color="white" />
+                <Text style={styles.buttonText}>Eliminar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ))
+      )}
+    </View>
+  );
+
+  const renderInscripciones = () => (
+    <View style={styles.tutoriasList}>
+      {inscripciones.length === 0 ? (
+        <Text style={styles.emptyText}>
+          No te has inscrito a ninguna clase aún.
+        </Text>
+      ) : (
+        inscripciones.map((inscripcion) => (
+          <TouchableOpacity
+            key={inscripcion.id}
+            style={styles.tutoriaCard}
+            onPress={() => navigation.navigate('PerfilTutor', { tutoria: inscripcion })}
+          >
+            {/* HEADER */}
+            <View style={styles.tutoriaHeader}>
+              <View style={styles.avatarContainer}>
+                <Text style={styles.avatarText}>
+                  {inscripcion.tutorNombre ? inscripcion.tutorNombre.substring(0, 2).toUpperCase() : "TU"}
+                </Text>
+              </View>
+
+              <View style={styles.tutoriaInfo}>
+                <Text style={styles.tutoriaMateria}>{inscripcion.materia}</Text>
+                <Text style={styles.tutoriaTutor}>Tutor: {inscripcion.tutorNombre}</Text>
+                <Text style={styles.fechaInscripcion}>
+                  Inscrito el: {new Date(inscripcion.fechaInscripcion).toLocaleDateString()}
+                </Text>
+              </View>
+            </View>
+
+            {/* FOOTER */}
+            <View style={styles.tutoriaFooter}>
+              <View style={styles.categoriaBadge}>
+                <Text style={styles.categoriaText}>{inscripcion.categoria}</Text>
+              </View>
+              <View style={styles.disponibilidadContainer}>
+                <Text style={[styles.disponibilidadText, { color: '#8B5CF6' }]}>
+                  Ver Detalles
+                </Text>
+                <Ionicons name="chevron-forward" size={16} color="#8B5CF6" />
+              </View>
+            </View>
+          </TouchableOpacity>
+        ))
+      )}
+    </View>
+  );
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <View style={styles.headerTop}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color="white" />
+          </TouchableOpacity>
+          <Text style={styles.titulo}>Mis Clases</Text>
+          <View style={{ width: 24 }} />
         </View>
 
+        {/* Tabs */}
+        {usuario && usuario.tipoUsuario === 'ambos' && (
+          <View style={styles.tabsContainer}>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'publicadas' && styles.tabActive]}
+              onPress={() => setActiveTab('publicadas')}
+            >
+              <Text style={[styles.tabText, activeTab === 'publicadas' && styles.tabTextActive]}>
+                Publicadas
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'inscripciones' && styles.tabActive]}
+              onPress={() => setActiveTab('inscripciones')}
+            >
+              <Text style={[styles.tabText, activeTab === 'inscripciones' && styles.tabTextActive]}>
+                Inscripciones
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {usuario && usuario.tipoUsuario === 'estudiante' ? (
+          renderInscripciones()
+        ) : usuario && usuario.tipoUsuario === 'tutor' ? (
+          renderPublicadas()
+        ) : (
+          activeTab === 'publicadas' ? renderPublicadas() : renderInscripciones()
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -161,24 +245,45 @@ const styles = StyleSheet.create({
 
   header: {
     backgroundColor: '#8B5CF6',
-    padding: 20,
-    paddingTop: 30,
+    paddingTop: 40,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
   },
-    header1: {
-      flexDirection: 'row',
-    justifyContent:'space-between',
-    alignItems: 'center',
-    backgroundColor: '#8B5CF6',
-    padding: 20,
-    paddingTop: 30,
+  headerTop: {
     flexDirection: 'row',
-    gap: 12,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  titulo: { color: 'white', fontSize: 20, fontWeight: 'bold' },
+
+  tabsContainer: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 8,
+    padding: 4,
     marginTop: 10,
   },
-  titulo: { color: 'white', fontSize: 22, fontWeight: 'bold' },
-  subtitulo: { color: 'rgba(255,255,255,0.8)', marginTop: 4 },
+  tab: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderRadius: 6,
+  },
+  tabActive: {
+    backgroundColor: 'white',
+  },
+  tabText: {
+    color: 'rgba(255,255,255,0.8)',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  tabTextActive: {
+    color: '#8B5CF6',
+  },
 
   tutoriasList: { padding: 20, gap: 12 },
+  emptyText: { textAlign: 'center', color: '#6B7280', marginTop: 40, fontSize: 16 },
 
   tutoriaCard: {
     backgroundColor: 'white',
@@ -204,10 +309,8 @@ const styles = StyleSheet.create({
 
   tutoriaMateria: { fontSize: 16, fontWeight: 'bold', color: '#1F2937' },
   tutoriaTutor: { fontSize: 14, color: '#6B7280' },
+  fechaInscripcion: { fontSize: 12, color: '#9CA3AF', marginTop: 2 },
 
-  ratingContainer: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  ratingText: { fontSize: 14, color: '#1F2937', fontWeight: '500' },
-  reviewsText: { fontSize: 12, color: '#9CA3AF' },
   precioText: { color: '#8B5CF6', fontWeight: '600' },
 
   tutoriaFooter: {
@@ -232,6 +335,9 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     gap: 12,
     marginTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+    paddingTop: 12,
   },
 
   editButton: {
@@ -253,9 +359,4 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   buttonText: { color: 'white', fontSize: 14, fontWeight: '500' },
-  backButton: {
-    marginRight: 12,
-    marginTop:15,
-    color: 'white',
-  },
 });

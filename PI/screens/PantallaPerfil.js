@@ -166,20 +166,22 @@ export default function PantallaPerfil({ navigation }) {
         </TouchableOpacity>
 
         {/* CTA Ser Tutor */}
-        <View style={styles.ctaContainer}>
-          <View style={styles.ctaCard}>
-            <Text style={styles.ctaTitle}>¿Quieres ser tutor?</Text>
-            <Text style={styles.ctaDescription}>
-              Comparte tus conocimientos con otros estudiantes
-            </Text>
-            <TouchableOpacity
-              style={styles.ctaButton}
-              onPress={() => navigation.navigate('PublicarTutoria')}
-            >
-              <Text style={styles.ctaButtonText}>Comenzar</Text>
-            </TouchableOpacity>
+        {usuario && usuario.tipoUsuario !== 'estudiante' && (
+          <View style={styles.ctaContainer}>
+            <View style={styles.ctaCard}>
+              <Text style={styles.ctaTitle}>¿Quieres ser tutor?</Text>
+              <Text style={styles.ctaDescription}>
+                Comparte tus conocimientos con otros estudiantes
+              </Text>
+              <TouchableOpacity
+                style={styles.ctaButton}
+                onPress={() => navigation.navigate('PublicarTutoria')}
+              >
+                <Text style={styles.ctaButtonText}>Comenzar</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );

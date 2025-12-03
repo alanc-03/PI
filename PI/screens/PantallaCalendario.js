@@ -1,10 +1,62 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Alert, Platform, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { obtenerInscripciones } from '../database/Database';
+import { getUsuarioActual } from '../utils/Session';
+import { useFocusEffect } from '@react-navigation/native';
 
 export default function PantallaCalendario({ navigation }) {
   const [mesActual, setMesActual] = useState(new Date());
+  const [inscripciones, setInscripciones] = useState([]);
+  const [sesionesDelDia, setSesionesDelDia] = useState([]);
+  const [diaSeleccionado, setDiaSeleccionado] = useState(new Date());
+
   const diasSemana = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+  const usuario = getUsuarioActual();
+
+  const cargarInscripciones = async () => {
+    if (usuario) {
+      const data = await obtenerInscripciones(usuario.id);
+      setInscripciones(data);
+      actualizarSesionesDelDia(diaSeleccionado, data);
+    }
+  };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      cargarInscripciones();
+    }, [])
+  );
+
+  const actualizarSesionesDelDia = (fecha, data = inscripciones) => {
+    // Por ahora, como no tenemos fecha específica de sesión en la BD (solo fecha de inscripción),
+    // vamos a simular que las sesiones son el día de hoy para demostración,
+    // o podríamos agregar un campo de fecha a la tutoría.
+    // Dado que el requerimiento no especificó agendar fechas exactas, 
+    // mostraremos todas las inscripciones si se selecciona el día de hoy, 
+    // o podríamos distribuir aleatoriamente si quisiéramos ser más complejos.
+    // Para simplificar y cumplir "funcionalidad", mostraremos las clases inscritas
+    // cuando se seleccione el día actual.
+
+    // MEJORA: Filtrar por fecha real si existiera. 
+    // Como no existe, mostraremos todas las clases inscritas siempre que se seleccione HOY.
+
+    const esHoy = fecha.getDate() === new Date().getDate() &&
+      fecha.getMonth() === new Date().getMonth() &&
+      fecha.getFullYear() === new Date().getFullYear();
+
+    if (esHoy) {
+      setSesionesDelDia(data);
+    } else {
+      setSesionesDelDia([]);
+    }
+  };
+
+  const seleccionarDia = (dia) => {
+    const nuevaFecha = new Date(mesActual.getFullYear(), mesActual.getMonth(), dia);
+    setDiaSeleccionado(nuevaFecha);
+    actualizarSesionesDelDia(nuevaFecha);
+  };
 
   const generarDiasMes = () => {
     const year = mesActual.getFullYear();
@@ -12,13 +64,13 @@ export default function PantallaCalendario({ navigation }) {
     const primerDia = new Date(year, month, 1);
     const ultimoDia = new Date(year, month + 1, 0);
     const diasEnMes = ultimoDia.getDate();
-    
+
     const dias = [];
-    const diaInicio = primerDia.getDay();
-    
+    const diaInicio = primerDia.getDay() || 7; // Ajuste para que lunes sea 1
+
     // Días del mes anterior
-    for (let i = diaInicio - 1; i >= 0; i--) {
-      const dia = new Date(year, month, -i);
+    for (let i = diaInicio - 1; i > 0; i--) { // Ajuste loop
+      const dia = new Date(year, month, 1 - i);
       dias.push({
         dia: dia.getDate(),
         esMesActual: false,
@@ -26,19 +78,23 @@ export default function PantallaCalendario({ navigation }) {
         tieneEvento: false
       });
     }
-    
+
     // Días del mes actual
     const hoy = new Date();
     for (let i = 1; i <= diasEnMes; i++) {
-      const tieneEvento = [5, 12, 19, 26].includes(i); // Días con eventos guardados
+      const esHoy = hoy.getDate() === i && hoy.getMonth() === month && hoy.getFullYear() === year;
+      // Simular evento si es hoy y hay inscripciones
+      const tieneEvento = esHoy && inscripciones.length > 0;
+
       dias.push({
         dia: i,
         esMesActual: true,
-        esHoy: hoy.getDate() === i && hoy.getMonth() === month && hoy.getFullYear() === year,
-        tieneEvento
+        esHoy: esHoy,
+        tieneEvento: tieneEvento,
+        seleccionado: diaSeleccionado.getDate() === i && diaSeleccionado.getMonth() === month
       });
     }
-    
+
     return dias;
   };
 
@@ -56,26 +112,11 @@ export default function PantallaCalendario({ navigation }) {
     return fecha.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
   };
 
-  const sesionesDelDia = [
-    {
-      id: 1,
-      materia: "Cálculo Diferencial",
-      tutor: "Victor Manuel",
-      hora: "10:00 - 11:00 AM",
-      ubicacion: "En línea",
-      tipo: "online",
-      color: "#8B5CF6"
-    },
-    {
-      id: 2,
-      materia: "Programación Python",
-      tutor: "José María",
-      hora: "2:00 - 3:30 PM",
-      ubicacion: "Biblioteca Central",
-      tipo: "presencial",
-      color: "#10B981"
-    }
-  ];
+  const abrirUbicacion = (ubicacion) => {
+    if (!ubicacion) return;
+    const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ubicacion)}`;
+    Linking.openURL(mapUrl);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -90,11 +131,11 @@ export default function PantallaCalendario({ navigation }) {
           <TouchableOpacity onPress={() => cambiarMes(-1)}>
             <Ionicons name="chevron-back" size={24} color="#374151" />
           </TouchableOpacity>
-          
+
           <Text style={styles.monthText}>
             {formatearMes(mesActual).charAt(0).toUpperCase() + formatearMes(mesActual).slice(1)}
           </Text>
-          
+
           <TouchableOpacity onPress={() => cambiarMes(1)}>
             <Ionicons name="chevron-forward" size={24} color="#374151" />
           </TouchableOpacity>
@@ -114,17 +155,20 @@ export default function PantallaCalendario({ navigation }) {
           {generarDiasMes().map((fecha, index) => (
             <TouchableOpacity
               key={index}
+              onPress={() => fecha.esMesActual && seleccionarDia(fecha.dia)}
               style={[
                 styles.diaCelda,
                 !fecha.esMesActual && styles.diaNoActual,
-                fecha.esHoy && styles.diaHoy,
-                fecha.tieneEvento && !fecha.esHoy && styles.diaConEvento
+                fecha.seleccionado && styles.diaSeleccionado,
+                fecha.esHoy && !fecha.seleccionado && styles.diaHoy,
+                fecha.tieneEvento && !fecha.seleccionado && styles.diaConEvento
               ]}
             >
               <Text style={[
                 styles.diaNumero,
                 !fecha.esMesActual && styles.diaNumeroNoActual,
-                fecha.esHoy && styles.diaNumeroHoy
+                fecha.seleccionado && styles.diaNumeroSeleccionado,
+                fecha.esHoy && !fecha.seleccionado && styles.diaNumeroHoy
               ]}>
                 {fecha.dia}
               </Text>
@@ -137,56 +181,61 @@ export default function PantallaCalendario({ navigation }) {
         <View style={styles.sesionesSection}>
           <View style={styles.sesionesHeader}>
             <Text style={styles.sesionesTitle}>
-              {formatearDia(new Date())}
+              {formatearDia(diaSeleccionado)}
             </Text>
             <View style={styles.badge}>
-              <Text style={styles.badgeText}>{sesionesDelDia.length} sesiones</Text>
+              <Text style={styles.badgeText}>{sesionesDelDia.length} clases</Text>
             </View>
           </View>
 
           <View style={styles.sesionesList}>
-            {sesionesDelDia.map((sesion) => (
-              <View key={sesion.id} style={[styles.sesionCard, { borderLeftColor: sesion.color }]}>
-                <View style={styles.sesionHeader}>
-                  <View style={[styles.avatar, { backgroundColor: sesion.color }]}>
-                    <Text style={styles.avatarText}>
-                      {sesion.tutor.split(' ').map(n => n[0]).join('')}
-                    </Text>
+            {sesionesDelDia.length === 0 ? (
+              <Text style={{ color: '#9CA3AF', textAlign: 'center', padding: 20 }}>No hay clases para este día</Text>
+            ) : (
+              sesionesDelDia.map((sesion) => (
+                <View key={sesion.id} style={[styles.sesionCard, { borderLeftColor: '#8B5CF6' }]}>
+                  <View style={styles.sesionHeader}>
+                    <View style={[styles.avatar, { backgroundColor: '#8B5CF6' }]}>
+                      <Text style={styles.avatarText}>
+                        {sesion.tutorNombre ? sesion.tutorNombre.substring(0, 2).toUpperCase() : 'TU'}
+                      </Text>
+                    </View>
+                    <View style={styles.sesionInfo}>
+                      <Text style={styles.sesionMateria}>{sesion.materia}</Text>
+                      <Text style={styles.sesionTutor}>{sesion.tutorNombre}</Text>
+                    </View>
                   </View>
-                  <View style={styles.sesionInfo}>
-                    <Text style={styles.sesionMateria}>{sesion.materia}</Text>
-                    <Text style={styles.sesionTutor}>{sesion.tutor}</Text>
-                  </View>
-                </View>
 
-                <View style={styles.sesionDetalles}>
-                  <View style={styles.detalleItem}>
-                    <Ionicons name="time-outline" size={16} color="#6B7280" />
-                    <Text style={styles.detalleText}>{sesion.hora}</Text>
+                  <View style={styles.sesionDetalles}>
+                    <View style={styles.detalleItem}>
+                      <Ionicons name="time-outline" size={16} color="#6B7280" />
+                      <Text style={styles.detalleText}>{sesion.duracion}</Text>
+                    </View>
+                    <View style={styles.detalleItem}>
+                      <Ionicons
+                        name={sesion.modalidad === 'En línea' ? 'videocam-outline' : 'location-outline'}
+                        size={16}
+                        color="#6B7280"
+                      />
+                      <Text style={styles.detalleText}>
+                        {sesion.modalidad === 'Presencial' && sesion.ubicacion ? sesion.ubicacion : sesion.modalidad}
+                      </Text>
+                    </View>
                   </View>
-                  <View style={styles.detalleItem}>
-                    <Ionicons 
-                      name={sesion.tipo === 'online' ? 'videocam-outline' : 'location-outline'} 
-                      size={16} 
-                      color="#6B7280" 
-                    />
-                    <Text style={styles.detalleText}>{sesion.ubicacion}</Text>
-                  </View>
-                </View>
 
-                <TouchableOpacity style={[
-                  styles.sesionButton,
-                  { backgroundColor: sesion.tipo === 'online' ? sesion.color : 'transparent' }
-                ]}>
-                  <Text style={[
-                    styles.sesionButtonText,
-                    { color: sesion.tipo === 'online' ? 'white' : sesion.color }
-                  ]}>
-                    {sesion.tipo === 'online' ? 'Unirse' : 'Ver ubicación'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            ))}
+                  {sesion.modalidad === 'Presencial' && sesion.ubicacion && (
+                    <TouchableOpacity
+                      style={[styles.sesionButton, { borderColor: '#8B5CF6' }]}
+                      onPress={() => abrirUbicacion(sesion.ubicacion)}
+                    >
+                      <Text style={[styles.sesionButtonText, { color: '#8B5CF6' }]}>
+                        Ver ubicación
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ))
+            )}
           </View>
         </View>
       </ScrollView>
@@ -256,6 +305,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
+    marginVertical: 2,
   },
   diaNoActual: {
     opacity: 0.3,
@@ -264,8 +314,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#8B5CF6',
     borderRadius: 20,
   },
+  diaSeleccionado: {
+    backgroundColor: '#4C1D95', // Darker purple
+    borderRadius: 20,
+  },
   diaConEvento: {
     backgroundColor: '#EDE9FE',
+    borderRadius: 20,
   },
   diaNumero: {
     fontSize: 14,
@@ -276,6 +331,9 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
   },
   diaNumeroHoy: {
+    color: 'white',
+  },
+  diaNumeroSeleccionado: {
     color: 'white',
   },
   eventoPunto: {
