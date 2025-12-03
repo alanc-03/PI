@@ -1,56 +1,64 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { obtenerTutorias } from '../database/Database';
 
 export default function PantallaBuscar({ navigation }) {
   const [busqueda, setBusqueda] = useState('');
+  const [tutorias, setTutorias] = useState([]);
+  const [resultados, setResultados] = useState([]);
   const [filtros, setFiltros] = useState({
     modalidad: '',
     precio: '',
     disponibilidad: ''
   });
 
-  const resultados = [
-    {
-      id: 1,
-      materia: "Cálculo Diferencial",
-      tutor: "Oscar Hernández",
-      rating: 4.9,
-      reseñas: 45,
-      modalidad: "En línea",
-      precio: "$80-$100 MX/hr"
-    },
-    {
-      id: 2,
-      materia: "Cálculo Integral",
-      tutor: "Alan Cruz",
-      rating: 4.8,
-      reseñas: 32,
-      modalidad: "Presencial",
-      precio: "$80-$100 MX/hr"
-    },
-    {
-      id: 3,
-      materia: "Cálculo Vectorial",
-      tutor: "María Fernanda",
-      rating: 5.0,
-      reseñas: 28,
-      modalidad: "En línea",
-      precio: "$80-$100 MX/hr"
+  const cargarTutorias = async () => {
+    const data = await obtenerTutorias();
+    setTutorias(data);
+    setResultados(data);
+  };
+
+  useEffect(() => {
+    cargarTutorias();
+    const unsubscribe = navigation.addListener('focus', () => {
+      cargarTutorias();
+    });
+    return unsubscribe;
+  }, [navigation]);
+
+  // Efecto para búsqueda en tiempo real
+  useEffect(() => {
+    if (busqueda.trim() === '') {
+      setResultados(tutorias);
+    } else {
+      const filtrados = tutorias.filter(t =>
+        t.materia.toLowerCase().includes(busqueda.toLowerCase()) ||
+        (t.tutorNombre && t.tutorNombre.toLowerCase().includes(busqueda.toLowerCase()))
+      );
+      setResultados(filtrados);
     }
-  ];
+  }, [busqueda, tutorias]);
 
   const aplicarFiltros = () => {
-    // Aquí iría la lógica para aplicar los filtros
-    console.log('Aplicando filtros:', filtros);
+    let filtrados = tutorias;
+
+    if (filtros.modalidad) {
+      filtrados = filtrados.filter(t => t.modalidad.toLowerCase() === filtros.modalidad.toLowerCase());
+    }
+
+    if (filtros.precio) {
+      filtrados = filtrados.filter(t => t.precio.includes(filtros.precio));
+    }
+
+    setResultados(filtrados);
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header con Buscador */}
       <View style={styles.header}>
         <View style={styles.buscadorContainer}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
@@ -72,7 +80,7 @@ export default function PantallaBuscar({ navigation }) {
         {/* Filtros */}
         <View style={styles.filtrosSection}>
           <Text style={styles.filtrosTitle}>Filtros</Text>
-          
+
           {/* Modalidad */}
           <View style={styles.filtroGroup}>
             <Text style={styles.filtroLabel}>Modalidad</Text>
@@ -94,7 +102,7 @@ export default function PantallaBuscar({ navigation }) {
                   En línea
                 </Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={[
                   styles.filtroButton,
@@ -136,7 +144,7 @@ export default function PantallaBuscar({ navigation }) {
                   $80-$100
                 </Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={[
                   styles.filtroButton,
@@ -178,7 +186,7 @@ export default function PantallaBuscar({ navigation }) {
                   Hoy
                 </Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={[
                   styles.filtroButton,
@@ -211,36 +219,42 @@ export default function PantallaBuscar({ navigation }) {
           </Text>
 
           <View style={styles.resultadosList}>
-            {resultados.map((item) => (
-              <TouchableOpacity 
-                key={item.id}
-                style={styles.resultadoCard}
-                onPress={() => navigation.navigate('PerfilTutor')}
-              >
-                <View style={styles.resultadoHeader}>
-                  <View style={styles.resultadoInfo}>
-                    <Text style={styles.resultadoMateria}>{item.materia}</Text>
-                    <Text style={styles.resultadoTutor}>{item.tutor}</Text>
+            {resultados.length === 0 ? (
+              <Text style={{ textAlign: 'center', color: '#6B7280', marginTop: 20 }}>
+                No se encontraron resultados.
+              </Text>
+            ) : (
+              resultados.map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={styles.resultadoCard}
+                  onPress={() => navigation.navigate('PerfilTutor', { tutoria: item })}
+                >
+                  <View style={styles.resultadoHeader}>
+                    <View style={styles.resultadoInfo}>
+                      <Text style={styles.resultadoMateria}>{item.materia}</Text>
+                      <Text style={styles.resultadoTutor}>{item.tutorNombre}</Text>
+                    </View>
+                    <View style={[
+                      styles.modalidadBadge,
+                      item.modalidad === 'En línea' ? styles.modalidadOnline : styles.modalidadPresencial
+                    ]}>
+                      <Text style={styles.modalidadText}>{item.modalidad}</Text>
+                    </View>
                   </View>
-                  <View style={[
-                    styles.modalidadBadge,
-                    item.modalidad === 'En línea' ? styles.modalidadOnline : styles.modalidadPresencial
-                  ]}>
-                    <Text style={styles.modalidadText}>{item.modalidad}</Text>
-                  </View>
-                </View>
 
-                <View style={styles.resultadoFooter}>
-                  <View style={styles.ratingContainer}>
-                    <Ionicons name="star" size={16} color="#F59E0B" />
-                    <Text style={styles.ratingText}>
-                      {item.rating} ({item.reseñas})
-                    </Text>
+                  <View style={styles.resultadoFooter}>
+                    <View style={styles.ratingContainer}>
+                      <Ionicons name="star" size={16} color="#F59E0B" />
+                      <Text style={styles.ratingText}>
+                        5.0 (Nuevo)
+                      </Text>
+                    </View>
+                    <Text style={styles.precioText}>${item.precio}</Text>
                   </View>
-                  <Text style={styles.precioText}>{item.precio}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
+                </TouchableOpacity>
+              ))
+            )}
           </View>
         </View>
       </ScrollView>

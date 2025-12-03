@@ -2,38 +2,37 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-export default function PantallaInicio({ navigation, route }) {
+import { obtenerTutorias } from '../database/Database';
+import { getUsuarioActual } from '../utils/Session';
 
-  const usuario = route.params?.usuario;  // 👈 Recibimos usuario desde login
+export default function PantallaInicio({ navigation }) {
 
+  const usuario = getUsuarioActual();
+  const [tutorias, setTutorias] = useState([]);
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState('Todas');
+  const [refreshing, setRefreshing] = useState(false);
+
+  const cargarTutorias = async () => {
+    const data = await obtenerTutorias();
+    setTutorias(data);
+  };
+
+  useEffect(() => {
+    cargarTutorias();
+
+    // Recargar al volver a la pantalla
+    const unsubscribe = navigation.addListener('focus', () => {
+      cargarTutorias();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
 
   const categorias = ['Todas', 'Matemáticas', 'Programación', 'Ciencias', 'Idiomas'];
 
-  const tutoriasEjemplo = [
-    {
-      id: 1,
-      materia: "Cálculo Diferencial",
-      tutor: "Victor Manuel",
-      rating: 4.9,
-      reseñas: 45,
-      precio: "$80-$100 MX/hr",
-      avatar: "VM",
-      categoria: "Matemáticas",
-      disponibilidad: "Disponible hoy"
-    },
-    {
-      id: 2,
-      materia: "Programación Python",
-      tutor: "José María",
-      rating: 5.0,
-      reseñas: 32,
-      precio: "$80-$100 MX/hr",
-      avatar: "JM",
-      categoria: "Programación",
-      disponibilidad: "Mañana 3 PM"
-    }
-  ];
+  const tutoriasFiltradas = categoriaSeleccionada === 'Todas'
+    ? tutorias
+    : tutorias.filter(t => t.categoria === categoriaSeleccionada);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -100,37 +99,45 @@ export default function PantallaInicio({ navigation, route }) {
           </View>
 
           <View style={styles.tutoriasList}>
-            {tutoriasEjemplo.map((tutoria) => (
-              <TouchableOpacity key={tutoria.id} style={styles.tutoriaCard}>
-                <View style={styles.tutoriaHeader}>
-                  <View style={styles.avatarContainer}>
-                    <Text style={styles.avatarText}>{tutoria.avatar}</Text>
+            {tutoriasFiltradas.length === 0 ? (
+              <Text style={{ textAlign: 'center', color: '#6B7280', marginTop: 20 }}>
+                No hay tutorías disponibles en esta categoría.
+              </Text>
+            ) : (
+              tutoriasFiltradas.map((tutoria) => (
+                <TouchableOpacity key={tutoria.id} style={styles.tutoriaCard}>
+                  <View style={styles.tutoriaHeader}>
+                    <View style={styles.avatarContainer}>
+                      <Text style={styles.avatarText}>
+                        {tutoria.tutorNombre ? tutoria.tutorNombre.substring(0, 2).toUpperCase() : "TU"}
+                      </Text>
+                    </View>
+                    <View style={styles.tutoriaInfo}>
+                      <Text style={styles.tutoriaMateria}>{tutoria.materia}</Text>
+                      <Text style={styles.tutoriaTutor}>{tutoria.tutorNombre}</Text>
+                      <View style={styles.ratingContainer}>
+                        <Ionicons name="star" size={16} color="#F59E0B" />
+                        <Text style={styles.ratingText}>5.0</Text>
+                        <Text style={styles.reviewsText}>(Nuevo)</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.precioText}>${tutoria.precio}</Text>
                   </View>
-                  <View style={styles.tutoriaInfo}>
-                    <Text style={styles.tutoriaMateria}>{tutoria.materia}</Text>
-                    <Text style={styles.tutoriaTutor}>{tutoria.tutor}</Text>
-                    <View style={styles.ratingContainer}>
-                      <Ionicons name="star" size={16} color="#F59E0B" />
-                      <Text style={styles.ratingText}>{tutoria.rating}</Text>
-                      <Text style={styles.reviewsText}>({tutoria.reseñas})</Text>
+
+                  <View style={styles.tutoriaFooter}>
+                    <View style={styles.categoriaBadge}>
+                      <Text style={styles.categoriaText}>{tutoria.categoria}</Text>
+                    </View>
+                    <View style={styles.disponibilidadContainer}>
+                      <Ionicons name="time-outline" size={16} color="#6B7280" />
+                      <Text style={styles.disponibilidadText}>{tutoria.duracion}</Text>
+                      <Ionicons name="location-outline" size={16} color="#6B7280" />
+                      <Text style={styles.disponibilidadText}>{tutoria.modalidad}</Text>
                     </View>
                   </View>
-                  <Text style={styles.precioText}>{tutoria.precio}</Text>
-                </View>
-
-                <View style={styles.tutoriaFooter}>
-                  <View style={styles.categoriaBadge}>
-                    <Text style={styles.categoriaText}>{tutoria.categoria}</Text>
-                  </View>
-                  <View style={styles.disponibilidadContainer}>
-                    <Ionicons name="time-outline" size={16} color="#6B7280" />
-                    <Text style={styles.disponibilidadText}>{tutoria.disponibilidad}</Text>
-                    <Ionicons name="location-outline" size={16} color="#6B7280" />
-                    <Text style={styles.disponibilidadText}>En línea</Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            ))}
+                </TouchableOpacity>
+              ))
+            )}
           </View>
 
         </View>

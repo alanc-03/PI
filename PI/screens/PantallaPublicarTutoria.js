@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { agregarTutoria } from '../database/Database';
+import { getUsuarioActual } from '../utils/Session';
 
 export default function PantallaPublicarTutoria({ navigation }) {
   const [formData, setFormData] = useState({
@@ -11,7 +12,8 @@ export default function PantallaPublicarTutoria({ navigation }) {
     descripcion: '',
     precio: '',
     modalidad: '',
-    duracion: ''
+    duracion: '',
+    ubicacion: ''
   });
 
   const categorias = ['Matemáticas', 'Programación', 'Ciencias', 'Idiomas'];
@@ -27,14 +29,36 @@ export default function PantallaPublicarTutoria({ navigation }) {
   };
 
   const manejarPublicar = () => {
-    const { materia, categoria, nivel, descripcion, precio, modalidad, duracion } = formData;
-    
-    if (!materia || !categoria || !nivel || !descripcion || !precio || !modalidad || !duracion) {
-      Alert.alert('Error', 'Por favor completa todos los campos');
+    const { materia, categoria, nivel, descripcion, precio, modalidad, duracion, ubicacion } = formData;
+    const usuario = getUsuarioActual();
+
+    if (!usuario) {
+      Alert.alert('Error', 'Debes iniciar sesión para publicar');
       return;
     }
 
-    agregarTutoria(formData, (result) => {
+    if (usuario.tipoUsuario === 'estudiante') {
+      Alert.alert('Acceso denegado', 'Solo los tutores pueden publicar clases.');
+      return;
+    }
+
+    if (!materia || !categoria || !nivel || !descripcion || !precio || !modalidad || !duracion) {
+      Alert.alert('Error', 'Por favor completa todos los campos obligatorios');
+      return;
+    }
+
+    if (modalidad === 'Presencial' && !ubicacion) {
+      Alert.alert('Error', 'Debes especificar la ubicación para clases presenciales');
+      return;
+    }
+
+    const tutoriaData = {
+      ...formData,
+      usuarioId: usuario.id,
+      tutorNombre: usuario.nombre
+    };
+
+    agregarTutoria(tutoriaData, (result) => {
       if (result.insertId) {
         Alert.alert('Éxito', 'Tutoría publicada correctamente');
         navigation.goBack();
@@ -48,7 +72,7 @@ export default function PantallaPublicarTutoria({ navigation }) {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
@@ -168,6 +192,19 @@ export default function PantallaPublicarTutoria({ navigation }) {
             </View>
           </View>
 
+          {/* Ubicación (Solo si es presencial) */}
+          {formData.modalidad === 'Presencial' && (
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Ubicación</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Ej. Biblioteca Central, Aula 3B..."
+                value={formData.ubicacion}
+                onChangeText={(text) => actualizarCampo('ubicacion', text)}
+              />
+            </View>
+          )}
+
           {/* Duración */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Duración de sesión</Text>
@@ -197,7 +234,7 @@ export default function PantallaPublicarTutoria({ navigation }) {
             <TouchableOpacity style={styles.botonPublicar} onPress={manejarPublicar}>
               <Text style={styles.botonPublicarTexto}>Publicar Tutoría</Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity style={styles.botonBorrador}>
               <Text style={styles.botonBorradorTexto}>Guardar Borrador</Text>
             </TouchableOpacity>
@@ -250,6 +287,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
+    backgroundColor: '#F9FAFB',
   },
   textArea: {
     height: 100,
@@ -260,22 +298,20 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   opcionButton: {
-    flex: 1,
-    minWidth: '30%',
-    padding: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: '#D1D5DB',
-    borderRadius: 8,
-    alignItems: 'center',
+    backgroundColor: 'white',
   },
   opcionButtonSeleccionada: {
     borderColor: '#8B5CF6',
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#EDE9FE',
   },
   opcionTexto: {
     fontSize: 14,
     color: '#6B7280',
-    textAlign: 'center',
   },
   opcionTextoSeleccionado: {
     color: '#8B5CF6',
@@ -283,12 +319,12 @@ const styles = StyleSheet.create({
   },
   botonesContainer: {
     gap: 12,
-    marginTop: 8,
+    marginTop: 20,
   },
   botonPublicar: {
     backgroundColor: '#8B5CF6',
     padding: 16,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
   },
   botonPublicarTexto: {
@@ -298,13 +334,13 @@ const styles = StyleSheet.create({
   },
   botonBorrador: {
     padding: 16,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#D1D5DB',
   },
   botonBorradorTexto: {
-    color: '#374151',
+    color: '#6B7280',
     fontSize: 16,
     fontWeight: '500',
   },

@@ -4,6 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import NavegacionAuth from "./navigation/NavegacionAuth";
 import { inicializarBaseDeDatos } from "./database/Database";
 
+
 export default function App() {
 
   useEffect(() => {

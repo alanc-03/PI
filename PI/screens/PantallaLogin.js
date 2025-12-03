@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { verificarLogin } from '../database/Database';
+import { setUsuarioActual } from '../utils/Session';
 
 export default function PantallaLogin({ navigation }) {
 
@@ -30,10 +31,11 @@ export default function PantallaLogin({ navigation }) {
     setLoading(false);
 
     if (resultado.ok) {
+      setUsuarioActual(resultado.usuario);
       Alert.alert("Éxito", "Inicio de sesión correcto");
 
       setTimeout(() => {
-        navigation.replace("PantallaInicio", { usuario: resultado.usuario });
+        navigation.replace("Principal");
       }, 300);
     } else {
       Alert.alert("Error", resultado.mensaje);

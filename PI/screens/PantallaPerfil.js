@@ -1,18 +1,50 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { obtenerTutoriasPorUsuario } from '../database/Database';
+import { getUsuarioActual } from '../utils/Session';
 
 export default function PantallaPerfil({ navigation }) {
-  const usuario = {
-    nombre: 'Yuliana Valdez',
-    carrera: 'Ingeniería en Sistemas',
-    avatar: 'YV',
-    estadisticas: {
-      tutorias: 12,
-      rating: 4.8,
-      progreso: '+23%'
+  const usuario = getUsuarioActual();
+  const [tutorias, setTutorias] = useState([]);
+  const [stats, setStats] = useState({
+    tutorias: 0,
+    rating: 5.0,
+    progreso: '+100%'
+  });
+
+  useEffect(() => {
+    if (usuario) {
+      cargarDatos();
     }
+  }, [usuario]);
+
+  // Recargar al volver a la pantalla
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      if (usuario) cargarDatos();
+    });
+    return unsubscribe;
+  }, [navigation, usuario]);
+
+  const cargarDatos = async () => {
+    const misTutorias = await obtenerTutoriasPorUsuario(usuario.id);
+    setTutorias(misTutorias);
+    setStats(prev => ({ ...prev, tutorias: misTutorias.length }));
   };
+
+  if (!usuario) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Text>No has iniciado sesión</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Login')} style={{ marginTop: 20, padding: 10, backgroundColor: '#8B5CF6', borderRadius: 8 }}>
+            <Text style={{ color: 'white' }}>Ir al Login</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const menuItems = [
     {
@@ -51,11 +83,13 @@ export default function PantallaPerfil({ navigation }) {
 
           <View style={styles.perfilInfo}>
             <View style={styles.avatarGrande}>
-              <Text style={styles.avatarGrandeText}>{usuario.avatar}</Text>
+              <Text style={styles.avatarGrandeText}>
+                {usuario.nombre ? usuario.nombre.substring(0, 2).toUpperCase() : "US"}
+              </Text>
             </View>
             <View style={styles.datosUsuario}>
               <Text style={styles.nombreUsuario}>{usuario.nombre}</Text>
-              <Text style={styles.carreraUsuario}>{usuario.carrera}</Text>
+              <Text style={styles.carreraUsuario}>{usuario.universidad}</Text>
             </View>
           </View>
         </View>
@@ -64,19 +98,19 @@ export default function PantallaPerfil({ navigation }) {
         <View style={styles.estadisticasContainer}>
           <View style={styles.estadisticaCard}>
             <Ionicons name="book-outline" size={24} color="#8B5CF6" />
-            <Text style={styles.estadisticaNumero}>{usuario.estadisticas.tutorias}</Text>
+            <Text style={styles.estadisticaNumero}>{stats.tutorias}</Text>
             <Text style={styles.estadisticaLabel}>Tutorías</Text>
           </View>
-          
+
           <View style={styles.estadisticaCard}>
             <Ionicons name="star" size={24} color="#F59E0B" />
-            <Text style={styles.estadisticaNumero}>{usuario.estadisticas.rating}</Text>
+            <Text style={styles.estadisticaNumero}>{stats.rating}</Text>
             <Text style={styles.estadisticaLabel}>Rating</Text>
           </View>
-          
+
           <View style={styles.estadisticaCard}>
             <Ionicons name="trending-up" size={24} color="#10B981" />
-            <Text style={styles.estadisticaNumero}>{usuario.estadisticas.progreso}</Text>
+            <Text style={styles.estadisticaNumero}>{stats.progreso}</Text>
             <Text style={styles.estadisticaLabel}>Progreso</Text>
           </View>
         </View>
@@ -108,7 +142,7 @@ export default function PantallaPerfil({ navigation }) {
             <Text style={styles.ctaDescription}>
               Comparte tus conocimientos con otros estudiantes
             </Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.ctaButton}
               onPress={() => navigation.navigate('PublicarTutoria')}
             >
