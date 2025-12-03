@@ -50,7 +50,7 @@ export default function PantallaPerfil({ navigation }) {
     {
       icon: 'book-outline',
       title: 'Mis Tutorías',
-      onPress: () => Alert.alert('Próximamente', 'Mis Tutorías estarán disponibles pronto')
+      onPress: () => navigation.navigate('MisTutorias')
     },
     {
       icon: 'bookmark-outline',

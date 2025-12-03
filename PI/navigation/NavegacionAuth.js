@@ -12,6 +12,7 @@ import PantallaPerfil from '../screens/PantallaPerfil';
 import PantallaPerfilTutor from '../screens/PantallaPerfilTutor';
 import PantallaPublicarTutoria from '../screens/PantallaPublicarTutoria';
 import NavegacionPrincipal from './NavegacionPrincipal';
+import PantallaEditarTutoria from '../screens/PantallaEditarTutoria';
 
 
 const Stack = createStackNavigator();
@@ -28,6 +29,7 @@ export default function NavegacionAuth() {
       <Stack.Screen name="Principal" component={NavegacionPrincipal} />
       <Stack.Screen name="PantallaInicio" component={PantallaInicio} />
       <Stack.Screen name="Buscar" component={PantallaBuscar} />
+      <Stack.Screen name="EditarTutoria" component={PantallaEditarTutoria}/>
       <Stack.Screen name="Calendario" component={PantallaCalendario} />
       <Stack.Screen name="Chat" component={PantallaChat} />
       <Stack.Screen name="Notificaciones" component={PantallaNotificaciones} />

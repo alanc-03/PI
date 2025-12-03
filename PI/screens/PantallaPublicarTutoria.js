@@ -160,8 +160,9 @@ export default function PantallaPublicarTutoria({ navigation }) {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Precio por hora (MX)</Text>
             <TextInput
-              style={styles.input}
-              placeholder="80-100"
+              style={styles.input }
+              placeholder="ej. 80-100"
+              placeholderTextColor='rgba(199, 199, 199, 1)'
               value={formData.precio}
               onChangeText={(text) => actualizarCampo('precio', text)}
               keyboardType="numeric"

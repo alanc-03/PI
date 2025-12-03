@@ -11,6 +11,8 @@ import PantallaChat from '../screens/PantallaChat';
 import PantallaNotificaciones from '../screens/PantallaNotificaciones';
 import PantallaPublicarTutoria from '../screens/PantallaPublicarTutoria';
 import PantallaPerfilTutor from '../screens/PantallaPerfilTutor';
+import MisTutorias from '../screens/MisTutorias';
+import PantallaEditarTutoria from '../screens/PantallaEditarTutoria';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -31,6 +33,7 @@ function PerfilStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="PerfilPrincipal" component={PantallaPerfil} />
       <Stack.Screen name="PublicarTutoria" component={PantallaPublicarTutoria} />
+      <Stack.Screen name="MisTutorias" component={MisTutorias}/>
     </Stack.Navigator>
   );
 }

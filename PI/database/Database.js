@@ -193,6 +193,46 @@ export const agregarTutoria = async (tutoria, callback) => {
 };
 
 /* -----------------------------------------
+   EDITAR TUTORÍA
+------------------------------------------ */
+export const editarTutoria = async (id, tutoriaActualizada) => {
+  try {
+    await db.runAsync(
+      `UPDATE tutorias
+       SET materia = ?,
+           categoria = ?,
+           nivel = ?,
+           descripcion = ?,
+           precio = ?,
+           modalidad = ?,
+           duracion = ?,
+           tutorNombre = ?,
+           ubicacion = ?
+       WHERE id = ?`,
+      [
+        tutoriaActualizada.materia,
+        tutoriaActualizada.categoria,
+        tutoriaActualizada.nivel,
+        tutoriaActualizada.descripcion,
+        tutoriaActualizada.precio,
+        tutoriaActualizada.modalidad,
+        tutoriaActualizada.duracion,
+        tutoriaActualizada.tutorNombre,
+        tutoriaActualizada.ubicacion,
+        id
+      ]
+    );
+
+    return { ok: true };
+
+  } catch (error) {
+    console.log("❌ Error editando tutoría:", error);
+    return { ok: false, mensaje: "Error al editar la tutoría" };
+  }
+};
+
+
+/* -----------------------------------------
    OBTENER TUTORÍAS
 ------------------------------------------ */
 export const obtenerTutorias = async () => {
@@ -204,6 +244,23 @@ export const obtenerTutorias = async () => {
     return [];
   }
 };
+
+/* -----------------------------------------
+   OBTENER UNA TUTORÍA POR ID
+------------------------------------------ */
+export const getTutoriaPorId = async (id) => {
+  try {
+    const tutoria = await db.getFirstAsync(
+      `SELECT * FROM tutorias WHERE id = ?`,
+      [id]
+    );
+    return tutoria;
+  } catch (error) {
+    console.log("❌ Error obteniendo tutoría por ID:", error);
+    return null;
+  }
+};
+
 
 /* -----------------------------------------
    OBTENER TUTORÍAS POR USUARIO
