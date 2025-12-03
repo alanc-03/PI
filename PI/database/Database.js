@@ -3,12 +3,7 @@ import * as Crypto from "expo-crypto";
 
 const db = openDatabaseSync("luminaDB.db");
 
-/* -----------------------------------------
-   CREAR TABLA
------------------------------------------- */
-/* -----------------------------------------
-   CREAR TABLA
------------------------------------------- */
+
 export const inicializarBaseDeDatos = () => {
   db.execSync(`
     CREATE TABLE IF NOT EXISTS usuarios (
@@ -63,19 +58,17 @@ export const inicializarBaseDeDatos = () => {
     );
   `);
 
-  // Intentar agregar columna ubicacion si no existe (para migracion simple)
+
   try {
     db.execSync(`ALTER TABLE tutorias ADD COLUMN ubicacion TEXT;`);
   } catch (e) {
-    // Ignorar error si la columna ya existe
+
   }
 
-  console.log("📌 Base de datos lista");
+  console.log("Base de datos lista");
 };
 
-/* -----------------------------------------
-   ENCRIPTAR CONTRASEÑA
------------------------------------------- */
+
 export const encriptarPassword = async (password) => {
   return await Crypto.digestStringAsync(
     Crypto.CryptoDigestAlgorithm.SHA256,
@@ -83,9 +76,7 @@ export const encriptarPassword = async (password) => {
   );
 };
 
-/* -----------------------------------------
-   BUSCAR USUARIO POR EMAIL
------------------------------------------- */
+
 export const buscarUsuarioPorEmail = async (email) => {
   try {
     const usuario = await db.getFirstAsync(
@@ -94,7 +85,7 @@ export const buscarUsuarioPorEmail = async (email) => {
     );
     return usuario || null;
   } catch (error) {
-    console.log("❌ Error buscando usuario:", error);
+    console.log("Error buscando usuario:", error);
     return null;
   }
 };
@@ -128,14 +119,12 @@ export const registrarUsuario = async (usuario) => {
     return { ok: true };
 
   } catch (error) {
-    console.log("❌ Error registrando usuario:", error);
+    console.log("Error registrando usuario:", error);
     return { ok: false, mensaje: "Error interno al registrar" };
   }
 };
 
-/* -----------------------------------------
-   LOGIN
------------------------------------------- */
+
 export const verificarLogin = async (email, passwordIngresada) => {
   try {
     const usuario = await buscarUsuarioPorEmail(email);
@@ -153,14 +142,12 @@ export const verificarLogin = async (email, passwordIngresada) => {
     return { ok: true, usuario };
 
   } catch (error) {
-    console.log("❌ Error login:", error);
+    console.log("Error login:", error);
     return { ok: false, mensaje: "Error interno" };
   }
 };
 
-/* -----------------------------------------
-   AGREGAR TUTORÍA
------------------------------------------- */
+
 export const agregarTutoria = async (tutoria, callback) => {
   try {
     const fecha = new Date().toISOString();
@@ -192,22 +179,18 @@ export const agregarTutoria = async (tutoria, callback) => {
   }
 };
 
-/* -----------------------------------------
-   OBTENER TUTORÍAS
------------------------------------------- */
+
 export const obtenerTutorias = async () => {
   try {
     const tutorias = await db.getAllAsync(`SELECT * FROM tutorias ORDER BY id DESC`);
     return tutorias;
   } catch (error) {
-    console.log("❌ Error obteniendo tutorías:", error);
+    console.log(" Error obteniendo tutorías:", error);
     return [];
   }
 };
 
-/* -----------------------------------------
-   OBTENER TUTORÍAS POR USUARIO
------------------------------------------- */
+
 export const obtenerTutoriasPorUsuario = async (usuarioId) => {
   try {
     const tutorias = await db.getAllAsync(
@@ -216,17 +199,15 @@ export const obtenerTutoriasPorUsuario = async (usuarioId) => {
     );
     return tutorias;
   } catch (error) {
-    console.log("❌ Error obteniendo tutorías de usuario:", error);
+    console.log(" Error obteniendo tutorías de usuario:", error);
     return [];
   }
 };
 
-/* -----------------------------------------
-   INSCRIBIRSE A CLASE
------------------------------------------- */
+
 export const inscribirseClase = async (usuarioId, tutoriaId) => {
   try {
-    // Verificar si ya está inscrito
+   
     const existe = await db.getFirstAsync(
       `SELECT * FROM inscripciones WHERE usuarioId = ? AND tutoriaId = ?`,
       [usuarioId, tutoriaId]
@@ -244,14 +225,12 @@ export const inscribirseClase = async (usuarioId, tutoriaId) => {
 
     return { ok: true };
   } catch (error) {
-    console.log("❌ Error inscribiendo:", error);
+    console.log("Error inscribiendo:", error);
     return { ok: false, mensaje: "Error al inscribirse" };
   }
 };
 
-/* -----------------------------------------
-   NOTIFICACIONES
------------------------------------------- */
+
 export const crearNotificacion = async (usuarioId, titulo, mensaje) => {
   try {
     const fecha = new Date().toISOString();
@@ -261,7 +240,7 @@ export const crearNotificacion = async (usuarioId, titulo, mensaje) => {
     );
     return { ok: true };
   } catch (error) {
-    console.log("❌ Error creando notificación:", error);
+    console.log("Error creando notificación:", error);
     return { ok: false };
   }
 };
@@ -284,7 +263,7 @@ export const marcarNotificacionLeida = async (id) => {
     await db.runAsync(`UPDATE notificaciones SET leida = 1 WHERE id = ?`, [id]);
     return { ok: true };
   } catch (error) {
-    console.log("❌ Error marcando notificación:", error);
+    console.log(" Error marcando notificación:", error);
     return { ok: false };
   }
 };
