@@ -48,7 +48,9 @@ export default function PantallaInicio({ navigation }) {
 
             </View>
 
-            <TouchableOpacity style={styles.notificationButton}>
+            <TouchableOpacity style={styles.notificationButton}
+            onPress={() => navigation.navigate('Notificaciones')}
+            >
               <Ionicons name="notifications-outline" size={24} color="white" />
               <View style={styles.notificationBadge}>
                 <Text style={styles.notificationText}>3</Text>
@@ -105,7 +107,11 @@ export default function PantallaInicio({ navigation }) {
               </Text>
             ) : (
               tutoriasFiltradas.map((tutoria) => (
-                <TouchableOpacity key={tutoria.id} style={styles.tutoriaCard}>
+                <TouchableOpacity
+                  key={tutoria.id}
+                  style={styles.tutoriaCard}
+                  onPress={() => navigation.navigate('PerfilTutor', { tutoria })}
+                >
                   <View style={styles.tutoriaHeader}>
                     <View style={styles.avatarContainer}>
                       <Text style={styles.avatarText}>

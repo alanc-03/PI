@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { obtenerTutoriasPorUsuario } from '../database/Database';
-import { getUsuarioActual } from '../utils/Session';
+import { getUsuarioActual, cerrarSesion } from '../utils/Session';
 
 export default function PantallaPerfil({ navigation }) {
   const usuario = getUsuarioActual();
@@ -69,6 +69,30 @@ export default function PantallaPerfil({ navigation }) {
     }
   ];
 
+  const handleLogout = () => {
+    Alert.alert(
+      "Cerrar Sesión",
+      "¿Estás seguro de que quieres cerrar sesión?",
+      [
+        {
+          text: "Cancelar",
+          style: "cancel"
+        },
+        {
+          text: "Cerrar Sesión",
+          style: "destructive",
+          onPress: () => {
+            cerrarSesion();
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'Bienvenida' }],
+            });
+          }
+        }
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
@@ -134,6 +158,12 @@ export default function PantallaPerfil({ navigation }) {
             </TouchableOpacity>
           ))}
         </View>
+
+        {/* Botón Cerrar Sesión */}
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Ionicons name="log-out-outline" size={20} color="#EF4444" />
+          <Text style={styles.logoutText}>Cerrar Sesión</Text>
+        </TouchableOpacity>
 
         {/* CTA Ser Tutor */}
         <View style={styles.ctaContainer}>
@@ -306,5 +336,23 @@ const styles = StyleSheet.create({
     color: '#8B5CF6',
     fontSize: 14,
     fontWeight: '600',
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FEF2F2',
+    marginHorizontal: 20,
+    marginBottom: 24,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    gap: 8,
+  },
+  logoutText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#EF4444',
   },
 });
