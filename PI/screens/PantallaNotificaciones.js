@@ -61,9 +61,12 @@ export default function PantallaNotificaciones({ navigation }) {
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
-            <Ionicons name="arrow-back" size={24} color="#374151" />
+          
+              <Ionicons name="arrow-back" size={34} color="#374151" />
+            
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Notificaciones</Text>
+          <Text>       </Text>
           <View style={styles.badge}>
             <Text style={styles.badgeText}>
               {notificaciones.filter(n => n.esNueva).length}
@@ -133,6 +136,7 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: 'white',
     paddingHorizontal: 20,
+    paddingTop: 40,
     paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
@@ -143,7 +147,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   backButton: {
-    padding: 4,
+    padding: 5,
+  },
+   backButtonInner: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   headerTitle: {
     fontSize: 20,
@@ -151,7 +168,7 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     flex: 1,
     textAlign: 'center',
-    marginLeft: -32, // Compensa el espacio del botón de retroceso
+    //marginLeft: -32, // Compensa el espacio del botón de retroceso
   },
   badge: {
     backgroundColor: '#8B5CF6',
