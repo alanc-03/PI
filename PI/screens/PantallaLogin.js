@@ -42,6 +42,10 @@ export default function PantallaLogin({ navigation }) {
     }
   };
 
+  const handleOlvidePassword = () => {
+    Alert.alert("Recuperar Contraseña", "Por favor contacta al soporte técnico para restablecer tu contraseña.");
+  };
+
   const disabled = !email || !password || loading;
 
   return (

@@ -1,7 +1,7 @@
 import React from 'react';
-import { 
-  View, Text, TouchableOpacity, StyleSheet, 
-  SafeAreaView, ScrollView, Alert, Linking, Platform 
+import {
+  View, Text, TouchableOpacity, StyleSheet,
+  SafeAreaView, ScrollView, Alert, Linking, Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getUsuarioActual } from '../utils/Session';
@@ -45,7 +45,44 @@ export default function PantallaDetalleTutoria({ route, navigation }) {
       return;
     }
 
-    Alert.alert('Información', 'El tutor no ha especificado una ubicación exacta.');
+    Alert.alert(
+      'Unirse a la clase',
+      `¿Deseas inscribirte a la clase de ${tutoria.materia}?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Confirmar',
+          onPress: async () => {
+            try {
+              // Importar funciones necesarias si no están en el scope (asumiendo que están importadas arriba o se importarán)
+              // Nota: Asegúrate de importar inscribirseClase, crearNotificacion, registrarHistorial desde '../database/Database'
+              const { inscribirseClase, crearNotificacion, registrarHistorial } = require('../database/Database');
+
+              const resultado = await inscribirseClase(usuarioActual.id, tutoria.id);
+
+              if (resultado.ok) {
+                // Crear notificación para el tutor
+                await crearNotificacion(
+                  tutoria.usuarioId,
+                  'Nueva inscripción',
+                  `${usuarioActual.nombre} se ha inscrito a tu clase de ${tutoria.materia}`
+                );
+
+                // Registrar en historial
+                await registrarHistorial(usuarioActual.id, 'Inscripción', `Te inscribiste a la clase de ${tutoria.materia}`);
+
+                Alert.alert('Éxito', 'Te has inscrito correctamente a la clase');
+              } else {
+                Alert.alert('Error', resultado.mensaje || 'No se pudo realizar la inscripción');
+              }
+            } catch (error) {
+              console.log("Error al unirse:", error);
+              Alert.alert('Error', 'Ocurrió un error al intentar unirse');
+            }
+          }
+        }
+      ]
+    );
   };
 
   // -------------------------------------------------------
@@ -76,12 +113,35 @@ export default function PantallaDetalleTutoria({ route, navigation }) {
   };
 
   // -------------------------------------------------------
+  // FUNCIÓN: MANEJAR GUARDAR MATERIA
+  // -------------------------------------------------------
+  const manejarGuardar = async () => {
+    if (!usuarioActual) {
+      Alert.alert('Error', 'Debes iniciar sesión para guardar materias');
+      return;
+    }
+
+    try {
+      const { guardarMateria } = require('../database/Database');
+      const resultado = await guardarMateria(usuarioActual.id, tutoria.id);
+
+      if (resultado.ok) {
+        Alert.alert('Guardado', 'Materia agregada a tus favoritos');
+      } else {
+        Alert.alert('Aviso', resultado.mensaje || 'Ya tienes guardada esta materia');
+      }
+    } catch (error) {
+      console.log("Error guardando:", error);
+    }
+  };
+
+  // -------------------------------------------------------
   // RENDER DE LA PANTALLA
   // -------------------------------------------------------
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        
+
         {/* HEADER */}
         <View style={styles.header}>
           <View style={styles.headerBackground} />
@@ -91,6 +151,16 @@ export default function PantallaDetalleTutoria({ route, navigation }) {
           >
             <View style={styles.backButtonInner}>
               <Ionicons name="arrow-back" size={20} color="#374151" />
+            </View>
+          </TouchableOpacity>
+
+          {/* Botón Guardar */}
+          <TouchableOpacity
+            style={styles.saveButton}
+            onPress={manejarGuardar}
+          >
+            <View style={styles.backButtonInner}>
+              <Ionicons name="heart-outline" size={20} color="#EF4444" />
             </View>
           </TouchableOpacity>
         </View>
@@ -130,7 +200,12 @@ export default function PantallaDetalleTutoria({ route, navigation }) {
             <TouchableOpacity
               style={styles.botonAccionSecundario}
               onPress={() =>
-                navigation.navigate('Chat', { tutor: { nombre: tutoria.tutorNombre } })
+                navigation.navigate('Chat', {
+                  tutor: {
+                    id: tutoria.usuarioId,
+                    nombre: tutoria.tutorNombre
+                  }
+                })
               }
             >
               <Ionicons name="chatbubble-outline" size={16} color="#8B5CF6" />
@@ -206,6 +281,7 @@ const styles = StyleSheet.create({
   headerBackground: { height: '100%', backgroundColor: '#8B5CF6' },
 
   backButton: { position: 'absolute', top: 16, left: 16 },
+  saveButton: { position: 'absolute', top: 16, right: 16 },
 
   backButtonInner: {
     width: 40, height: 40, borderRadius: 20,

@@ -6,7 +6,7 @@ import { getUsuarioActual, cerrarSesion } from '../utils/Session';
 
 export default function PantallaPerfil({ navigation }) {
 
-  const usuario = getUsuarioActual();
+  const [usuario, setUsuario] = useState(getUsuarioActual());
   const [tutorias, setTutorias] = useState([]);
   const [stats, setStats] = useState({
     tutorias: 0,
@@ -20,13 +20,15 @@ export default function PantallaPerfil({ navigation }) {
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("focus", () => {
-      // Forzar actualización al volver (por si se editó el perfil)
+      // Actualizar usuario al volver (por si se editó el perfil)
+      setUsuario(getUsuarioActual());
       if (usuario) cargarDatos();
     });
     return unsubscribe;
-  }, [navigation, usuario]);
+  }, [navigation]);
 
   const cargarDatos = async () => {
+    if (!usuario) return;
     const misTutorias = await obtenerTutoriasPorUsuario(usuario.id);
     setTutorias(misTutorias);
     setStats(prev => ({ ...prev, tutorias: misTutorias.length }));

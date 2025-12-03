@@ -1,115 +1,121 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { getUsuarioActual } from '../utils/Session';
+import { enviarMensaje, obtenerMensajes } from '../database/Database';
 
 export default function PantallaChat({ navigation, route }) {
+  const { tutor } = route.params || {}; // Esperamos un objeto tutor con id y nombre
+  const usuarioActual = getUsuarioActual();
+
   const [mensaje, setMensaje] = useState('');
-  const [mensajes, setMensajes] = useState([
-    {
-      id: 1,
-      texto: 'Hola, hoy tenemos sesión, el tema de hoy serán las derivadas.',
-      esUsuario: false,
-      hora: '10:15 AM',
-      fecha: 'Hoy'
-    },
-    {
-      id: 2,
-      texto: 'okey, está perfecto!',
-      esUsuario: true,
-      hora: '10:16 AM',
-      fecha: 'Hoy'
-    }
-  ]);
+  const [mensajes, setMensajes] = useState([]);
+  const scrollViewRef = useRef();
 
-  const enviarMensaje = () => {
-    if (mensaje.trim()) {
-      const nuevoMensaje = {
-        id: mensajes.length + 1,
-        texto: mensaje,
-        esUsuario: true,
-        hora: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
-        fecha: 'Hoy'
-      };
-      setMensajes([...mensajes, nuevoMensaje]);
+  useEffect(() => {
+    if (usuarioActual && tutor) {
+      cargarMensajes();
+      // Polling simple para actualizar mensajes cada 3 segundos
+      const interval = setInterval(cargarMensajes, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [usuarioActual, tutor]);
+
+  const cargarMensajes = async () => {
+    if (!usuarioActual || !tutor) return;
+    const data = await obtenerMensajes(usuarioActual.id, tutor.id);
+    setMensajes(data);
+  };
+
+  const handleEnviar = async () => {
+    if (mensaje.trim() && usuarioActual && tutor) {
+      await enviarMensaje(usuarioActual.id, tutor.id, mensaje);
       setMensaje('');
+      cargarMensajes();
     }
   };
 
-  const tutor = {
-    nombre: 'Victor Manuel',
-    estado: 'En línea',
-    avatar: 'VM'
-  };
+  if (!tutor) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Text>No se especificó el usuario para chatear.</Text>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 20 }}>
+            <Text style={{ color: '#8B5CF6' }}>Volver</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
           <Ionicons name="arrow-back" size={24} color="#374151" />
         </TouchableOpacity>
-        
+
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{tutor.avatar}</Text>
+          <Text style={styles.avatarText}>
+            {tutor.nombre ? tutor.nombre.substring(0, 2).toUpperCase() : 'US'}
+          </Text>
         </View>
-        
+
         <View style={styles.tutorInfo}>
           <Text style={styles.tutorNombre}>{tutor.nombre}</Text>
-          <Text style={styles.tutorEstado}>{tutor.estado}</Text>
+          <Text style={styles.tutorEstado}>En línea</Text>
         </View>
       </View>
 
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         {/* Mensajes */}
-        <ScrollView 
+        <ScrollView
+          ref={scrollViewRef}
           style={styles.mensajesContainer}
           contentContainerStyle={styles.mensajesContent}
           showsVerticalScrollIndicator={false}
+          onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
         >
-          {/* Indicador de fecha */}
-          <View style={styles.fechaContainer}>
-            <Text style={styles.fechaText}>Hoy</Text>
-          </View>
-
-          {mensajes.map((msg) => (
-            <View key={msg.id} style={[
-              styles.mensajeContainer,
-              msg.esUsuario ? styles.mensajeUsuario : styles.mensajeTutor
-            ]}>
-              {!msg.esUsuario && (
-                <View style={styles.avatarPequeño}>
-                  <Text style={styles.avatarPequeñoText}>{tutor.avatar}</Text>
-                </View>
-              )}
-              
-              <View style={[
-                styles.mensajeBurbuja,
-                msg.esUsuario ? styles.burbujaUsuario : styles.burbujaTutor
+          {mensajes.map((msg) => {
+            const esMio = msg.emisorId === usuarioActual.id;
+            return (
+              <View key={msg.id} style={[
+                styles.mensajeContainer,
+                esMio ? styles.mensajeUsuario : styles.mensajeTutor
               ]}>
-                <Text style={[
-                  styles.mensajeTexto,
-                  msg.esUsuario ? styles.mensajeTextoUsuario : styles.mensajeTextoTutor
+                {!esMio && (
+                  <View style={styles.avatarPequeño}>
+                    <Text style={styles.avatarPequeñoText}>
+                      {tutor.nombre ? tutor.nombre.substring(0, 2).toUpperCase() : 'T'}
+                    </Text>
+                  </View>
+                )}
+
+                <View style={[
+                  styles.mensajeBurbuja,
+                  esMio ? styles.burbujaUsuario : styles.burbujaTutor
                 ]}>
-                  {msg.texto}
+                  <Text style={[
+                    styles.mensajeTexto,
+                    esMio ? styles.mensajeTextoUsuario : styles.mensajeTextoTutor
+                  ]}>
+                    {msg.texto}
+                  </Text>
+                </View>
+
+                <Text style={styles.mensajeHora}>
+                  {new Date(msg.fecha).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </Text>
               </View>
-              
-              <Text style={styles.mensajeHora}>{msg.hora}</Text>
-            </View>
-          ))}
-
-          {/* Recordatorio de sesión */}
-          <View style={styles.recordatorioContainer}>
-            <Text style={styles.recordatorioText}>
-              La sesión inicia en una hora
-            </Text>
-          </View>
+            );
+          })}
         </ScrollView>
 
         {/* Input de mensaje */}
@@ -121,9 +127,9 @@ export default function PantallaChat({ navigation, route }) {
             onChangeText={setMensaje}
             multiline
           />
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.enviarButton}
-            onPress={enviarMensaje}
+            onPress={handleEnviar}
           >
             <Ionicons name="send" size={20} color="white" />
           </TouchableOpacity>
@@ -135,7 +141,6 @@ export default function PantallaChat({ navigation, route }) {
 
 const styles = StyleSheet.create({
   container: {
-    marginTop:30,
     flex: 1,
     backgroundColor: '#F9FAFB',
   },

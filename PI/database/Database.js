@@ -462,6 +462,57 @@ export const obtenerHistorial = async (usuarioId) => {
 };
 
 /* -----------------------------------------
+   CHAT / MENSAJES
+------------------------------------------ */
+export const inicializarTablaMensajes = () => {
+  db.execSync(`
+    CREATE TABLE IF NOT EXISTS mensajes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      emisorId INTEGER,
+      receptorId INTEGER,
+      texto TEXT,
+      fecha TEXT,
+      leido INTEGER DEFAULT 0,
+      FOREIGN KEY (emisorId) REFERENCES usuarios(id),
+      FOREIGN KEY (receptorId) REFERENCES usuarios(id)
+    );
+  `);
+};
+
+// Inicializar tabla de mensajes
+inicializarTablaMensajes();
+
+export const enviarMensaje = async (emisorId, receptorId, texto) => {
+  try {
+    const fecha = new Date().toISOString();
+    await db.runAsync(
+      `INSERT INTO mensajes (emisorId, receptorId, texto, fecha) VALUES (?, ?, ?, ?)`,
+      [emisorId, receptorId, texto, fecha]
+    );
+    return { ok: true };
+  } catch (error) {
+    console.log("Error enviando mensaje:", error);
+    return { ok: false };
+  }
+};
+
+export const obtenerMensajes = async (usuarioId1, usuarioId2) => {
+  try {
+    const mensajes = await db.getAllAsync(
+      `SELECT * FROM mensajes 
+       WHERE (emisorId = ? AND receptorId = ?) 
+          OR (emisorId = ? AND receptorId = ?) 
+       ORDER BY id ASC`,
+      [usuarioId1, usuarioId2, usuarioId2, usuarioId1]
+    );
+    return mensajes;
+  } catch (error) {
+    console.log("Error obteniendo mensajes:", error);
+    return [];
+  }
+};
+
+/* -----------------------------------------
    CONFIGURACIÓN / PERFIL
 ------------------------------------------ */
 /* -----------------------------------------

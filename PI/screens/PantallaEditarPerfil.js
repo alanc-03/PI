@@ -42,25 +42,31 @@ export default function PantallaEditarPerfil({ navigation }) {
         }
 
         setCargando(true);
-        const datos = {
-            nombre,
-            alias,
-            fechaNacimiento,
-            foto
-        };
+        try {
+            const datos = {
+                nombre,
+                alias,
+                fechaNacimiento,
+                foto
+            };
 
-        const resultado = await actualizarPerfilCompleto(usuario.id, datos);
+            const resultado = await actualizarPerfilCompleto(usuario.id, datos);
 
-        if (resultado.ok) {
-            // Actualizar sesión con los nuevos datos
-            await iniciarSesion(resultado.usuario);
-            Alert.alert('Éxito', 'Perfil actualizado correctamente', [
-                { text: 'OK', onPress: () => navigation.goBack() }
-            ]);
-        } else {
-            Alert.alert('Error', 'No se pudo actualizar el perfil');
+            if (resultado.ok) {
+                // Actualizar sesión con los nuevos datos
+                await iniciarSesion(resultado.usuario);
+                Alert.alert('Éxito', 'Perfil actualizado correctamente', [
+                    { text: 'OK', onPress: () => navigation.goBack() }
+                ]);
+            } else {
+                Alert.alert('Error', resultado.mensaje || 'No se pudo actualizar el perfil');
+            }
+        } catch (error) {
+            console.log("Error en handleGuardar:", error);
+            Alert.alert('Error', 'Ocurrió un error inesperado al guardar');
+        } finally {
+            setCargando(false);
         }
-        setCargando(false);
     };
 
     return (
@@ -141,7 +147,7 @@ export default function PantallaEditarPerfil({ navigation }) {
 
 const styles = StyleSheet.create({
     container: {
-        marginTop:20,
+        marginTop: 20,
         flex: 1,
         backgroundColor: '#F9FAFB',
     },
