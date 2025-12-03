@@ -30,7 +30,7 @@ export default function PantallaCalendario({ navigation }) {
     // Días del mes actual
     const hoy = new Date();
     for (let i = 1; i <= diasEnMes; i++) {
-      const tieneEvento = [5, 12, 19, 26].includes(i); // Días con eventos
+      const tieneEvento = [5, 12, 19, 26].includes(i); // Días con eventos guardados
       dias.push({
         dia: i,
         esMesActual: true,

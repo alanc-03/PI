@@ -43,12 +43,12 @@ export default function PantallaNotificaciones({ navigation }) {
   ];
 
   const manejarAceptar = (notificacionId) => {
-    Alert.alert('Solicitud Aceptada', 'Has aceptado la solicitud de tutoría');
+    Alert.alert('Solicitud Aceptada', 'Acabas de aceptar la solicitud de tutoría');
     // Aquí iría la lógica para actualizar el estado de la notificación
   };
 
   const manejarRechazar = (notificacionId) => {
-    Alert.alert('Solicitud Rechazada', 'Has rechazado la solicitud de tutoría');
+    Alert.alert('Solicitud Rechazada', 'Has rechazado la solicitud de  tutoría');
     // Aquí iría la lógica para actualizar el estado de la notificación
   };
 
@@ -112,7 +112,7 @@ export default function PantallaNotificaciones({ navigation }) {
                     style={styles.accionRechazar}
                     onPress={() => manejarRechazar(notificacion.id)}
                   >
-                    <Ionicons name="close" size={16} color="#374151" />
+                    <Ionicons name="close" size={16} color="#374150" />
                     <Text style={styles.accionTextoRechazar}>Rechazar</Text>
                   </TouchableOpacity>
                 </View>

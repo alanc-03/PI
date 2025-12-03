@@ -13,7 +13,7 @@ export default function PantallaBienvenida({ navigation }) {
         </View>
         <Text style={styles.title}>Lumina</Text> 
         <Text style={styles.subtitle}>
-          Conecta con tutores y estudiantes de tu universidad
+          Conecta con los tutores y estudiantes de tu universidad
         </Text>
         <View style={styles.buttonContainer}>
           <TouchableOpacity 
@@ -31,7 +31,7 @@ export default function PantallaBienvenida({ navigation }) {
         </View>
       </View>
       <View style={styles.footer}>
-        <Text style={styles.footerText}>© 2025 Lumina - Proyecto Universitario</Text>
+        <Text style={styles.footerText}>© 2025 Lumina - Proyecto Universitario.</Text>
       </View>
     </SafeAreaView>
   );
